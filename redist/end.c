@@ -1,0 +1,2 @@
+#endif // STDSTRING_IMPLEMENTATION
+#endif // STDSTRING_H

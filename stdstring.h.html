@@ -1,7 +1,7 @@
-<meta charset='utf-8' emacsmode='-*- markdown -*-'>
+﻿<meta charset='utf-8' emacsmode='-*- markdown -*-'>
 <link rel='stylesheet' href='https://casual-effects.com/markdeep/latest/apidoc.css?'>
-<style>.backtick, .tilde {overflow-x: auto;}</style>
-<style>.longTOC {overflow-x: hidden;}</style>
+<style>.backtick, .tilde {overflow-x: auto;} .longTOC {overflow-x: hidden;}</style>
+<sc﻿ript type="preformatted">
 # String library
 C string library (STB style, header-only). Features:
 - String expression evaluator (`streval`)
@@ -24,8 +24,15 @@ C string library (STB style, header-only). Features:
 # Changelog
 - 2018.1 (v1.0.0): *Initial release*
 
+# Credits
+- Using Rob Pike's regular expression (apparently public domain).
+- Using Sam Hocevar's preprocessor trick (apparently public domain).
+- Using Sean Barrett and Jeff Roberts' string formatters (unlicensed).
+- Using Werner Stoop's expression evaluator (unlicensed).
+- Using Dimitri Diakopoulos' unicode stuff (unlicensed).
+
 # License
-- rlyeh, public domain (~unlicensed).
+- rlyeh, unlicensed (~public domain).
 
 # API
 ## String expression evaluator
@@ -151,5 +158,6 @@ ABI      uint32_t      strutf32(INOUT const char **p);
 ABI TEMP char *        strutf8(uint32_t cp);
 ABI HEAP wchar_t*      strwiden(const char *utf8);
 ~~~
+</sc﻿ript>
 <script>markdeepOptions={tocStyle:'long'};</script>
 <!-- Markdeep: --><script src='https://casual-effects.com/markdeep/latest/markdeep.min.js?'></script>

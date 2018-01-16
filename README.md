@@ -20,5 +20,12 @@ C string library (STB style, header-only). Features:
 # Changelog
 - 2018.1 (v1.0.0): *Initial release*
 
+# Credits
+- Using Rob Pike's regular expression (apparently public domain).
+- Using Sam Hocevar's preprocessor trick (apparently public domain).
+- Using Sean Barrett and Jeff Roberts' string formatters (unlicensed).
+- Using Werner Stoop's expression evaluator (unlicensed).
+- Using Dimitri Diakopoulos' unicode stuff (unlicensed).
+
 # License
-- Public domain (~unlicensed).
+- unlicensed (~public domain).

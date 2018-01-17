@@ -24,13 +24,13 @@ TEMP char *strf( const char *fmt, ... ) { //$
 }
 HEAP char *strcpyfv( char **str, const char *fmt, va_list lst ) { //$
     TEMP char *buf = strfv( fmt, lst );
-    if( str && (*str) ) {
+    if( str && *str ) {
         int len = strlen(buf) + 1;
         (*str) = (char*)REALLOC( str && (*str) ? str : 0, len );
         memcpy( (*str), buf, len );
         return *str;
     } else {
-        return STRDUP(buf);
+        return str ? *str = STRDUP(buf) : STRDUP(buf);
     }
 }
 HEAP char *strcpyf( char **str, const char *fmt, ... ) { //$
@@ -48,10 +48,9 @@ HEAP char *strcatfv( char **str, const char *fmt, va_list lst ) { //$
         memcpy( (*str) + l1, buf, l2 + 1 );
         return *str;
     } else {
-        return strcpyfv( str, fmt, lst );
+        return str ? *str = STRDUP(buf) : STRDUP(buf);
     }
 }
-ABI
 HEAP char *strcatf( char **str, const char *fmt, ... ) { //$
     va_list lst;
     va_start(lst, fmt);

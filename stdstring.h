@@ -9,7 +9,7 @@
 /// - String interning (quarks) (`intern`, `string`)
 /// - String matching (`strsub`, `strfindl`, `strfindr`, `strbegin`, `strend`, `strmatch`, `streq`, `streqi`)
 /// - String splitting (with and without allocations) (`strsplit`, `strchop`)
-/// - String transform utils (`strrepl`, `strtriml`, `strtrimr`, `strlower`)
+/// - String transform utils (`strreplace`, `strtriml`, `strtrimr`, `strlower`)
 /// - String conversion utils (`strint`, `strhuman`, `strrobot`)
 /// - String unicode utils (`strutf8`, `strutf32`, `strwiden`)
 /// - [Documentation](https://rawgit.com/r-lyeh/stdstring.h/master/stdstring.h.html).
@@ -18,6 +18,7 @@
 /// - https://github.com/r-lyeh/stdstring.h
 ///
 /// # Changelog
+/// - 2018.1 (v1.0.1): *Fix wrong version of strcatf() in first commit; Cosmetics*
 /// - 2018.1 (v1.0.0): *Initial release*
 ///
 /// # Credits
@@ -60,10 +61,10 @@ ABI TEMP char *        strfv(const char *format, va_list list);
 /// - Concat a C-style formatted string. Reallocates input buffer (will create buffer if `str` is NULL).
 /// - Concat a C-style formatted valist. Reallocates input buffer (will create buffer if `str` is NULL).
 ///<C
-ABI HEAP char *        strcpyf (OUT char **string, const char *format, ...);
-ABI HEAP char *        strcpyfv(OUT char **string, const char *format, va_list list);
-ABI HEAP char *        strcatf (OUT char **string, const char *format, ...);
-ABI HEAP char *        strcatfv(OUT char **string, const char *format, va_list list);
+ABI HEAP char *        strcpyf (INOUT char **string, const char *format, ...);
+ABI HEAP char *        strcpyfv(INOUT char **string, const char *format, va_list list);
+ABI HEAP char *        strcatf (INOUT char **string, const char *format, ...);
+ABI HEAP char *        strcatfv(INOUT char **string, const char *format, va_list list);
 
 /// ## String fuzzy completion
 /// - Compares two strings. Returns string matching score (higher is better).
@@ -83,8 +84,8 @@ ABI      const char *  strfuzzy(const char *string, int num, const char *words[]
 ABI      int           strregex(const char *string, const char *regex);
 
 /// ## String hashing
-/// - Compile-time string hash macro. Returns 64-bit hash of given string.
 /// - Runtime string hash. Returns 64-bit hash of given string.
+/// - Compile-time string hash macro. Returns 64-bit hash of given string.
 /// - Note: Macro requires code optimizations enabled (`/O3` for gcc, `-O2` for MSVC).
 ///<C
 ABI      uint64_t      strhash(const char *string);
@@ -148,8 +149,8 @@ ABI      uint64_t      strrobot(const char *string);
 /// - Convert 32bit codepoint to utf8 string.
 /// - Convert utf8 to utf16 string (Windows only).
 ///<C
-ABI      uint32_t      strutf32(INOUT const char **p);
-ABI TEMP char *        strutf8(uint32_t cp);
+ABI      uint32_t      strutf32(INOUT const char **utf8);
+ABI TEMP char *        strutf8(uint32_t codepoint);
 ABI HEAP wchar_t*      strwiden(const char *utf8);
 ///>
 
@@ -2621,13 +2622,13 @@ TEMP char *strf( const char *fmt, ... ) { //$
 }
 HEAP char *strcpyfv( char **str, const char *fmt, va_list lst ) { //$
     TEMP char *buf = strfv( fmt, lst );
-    if( str && (*str) ) {
+    if( str && *str ) {
         int len = strlen(buf) + 1;
         (*str) = (char*)REALLOC( str && (*str) ? str : 0, len );
         memcpy( (*str), buf, len );
         return *str;
     } else {
-        return STRDUP(buf);
+        return str ? *str = STRDUP(buf) : STRDUP(buf);
     }
 }
 HEAP char *strcpyf( char **str, const char *fmt, ... ) { //$
@@ -2645,10 +2646,9 @@ HEAP char *strcatfv( char **str, const char *fmt, va_list lst ) { //$
         memcpy( (*str) + l1, buf, l2 + 1 );
         return *str;
     } else {
-        return strcpyfv( str, fmt, lst );
+        return str ? *str = STRDUP(buf) : STRDUP(buf);
     }
 }
-ABI
 HEAP char *strcatf( char **str, const char *fmt, ... ) { //$
     va_list lst;
     va_start(lst, fmt);

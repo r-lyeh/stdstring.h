@@ -11,7 +11,7 @@ int64_t strint( const char *string ) { $
         while( *string >= '0' && *string <= '9') v = (v * 10) + *string++ - '0';
     }
     return n * v;
-};
+}
 
 static builtin(thread) char strhuman_buf[8] = {0};
 TEMP char *strhuman(uint64_t number) { $

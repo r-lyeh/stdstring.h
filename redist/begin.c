@@ -9,6 +9,7 @@
 /// - String interning (quarks) (`intern`, `string`)
 /// - String matching (`strsub`, `strfindl`, `strfindr`, `strbegin`, `strend`, `strmatch`, `streq`, `streqi`)
 /// - String splitting (with and without allocations) (`strsplit`, `strchop`)
+/// - String options parsing (`stropt`, `stropti`, `stroptf`)
 /// - String transform utils (`strreplace`, `strtriml`, `strtrimr`, `strlower`)
 /// - String conversion utils (`strint`, `strhuman`, `strrobot`)
 /// - String unicode utils (`strutf8`, `strutf32`, `strwiden`)
@@ -18,8 +19,9 @@
 /// - https://github.com/r-lyeh/stdstring.h
 ///
 /// # Changelog
-/// - 2018.1 (v1.0.1): *Fix wrong version of strcatf() in first commit; Cosmetics*
-/// - 2018.1 (v1.0.0): *Initial release*
+/// - 2018.1 (v1.0.2): *Add `stropt*()` options parser*
+/// - 2018.1 (v1.0.1): Fix wrong version of strcatf() in first commit; Cosmetics
+/// - 2018.1 (v1.0.0): Initial release
 ///
 /// # Credits
 /// - Using Rob Pike's regular expression (apparently public domain).
@@ -31,8 +33,6 @@
 /// # License
 /// - rlyeh, unlicensed (~public domain).
 /// 
-
-
 
 // API ------------------------------------------------------------------------
 
@@ -144,6 +144,15 @@ ABI      int64_t       strint  (const char *string);
 ABI TEMP char*         strhuman(uint64_t number);
 ABI      uint64_t      strrobot(const char *string);
 
+/// ## String options parsing
+/// - Parse argc/argv looking for comma-separated values. Returns matching string or `defaults`.
+/// - Parse argc/argv looking for comma-separated values. Returns matching integer or `defaults`.
+/// - Parse argc/argv looking for comma-separated values. Returns matching floating or `defaults`.
+///<C
+ABI      const char *  stropt ( const char *defaults, const char *options_csv );
+ABI      int64_t       stropti( int64_t defaults, const char *options_csv );
+ABI      double        stroptf( double defaults, const char *options_csv );
+
 /// ## String unicode utils
 /// - Extract 32bit codepoint from string.
 /// - Convert 32bit codepoint to utf8 string.
@@ -217,15 +226,17 @@ ABI HEAP wchar_t*      strwiden(const char *utf8);
 
 // String symbol that holds whole api declarations
 // Useful for function-foreign interface (FFI) and related script bindings.
-ABI const char * const strapi =
+ABI const char * const strapi() {
     #undef  API
     #define API(name, ...) #__VA_ARGS__
+    return
     #include __FILE__
     ;
+}
 
 #ifdef APIDEMO
 #include <stdio.h>
 int main() {
-    puts(strapi);
+    puts(strapi());
 }
 #endif

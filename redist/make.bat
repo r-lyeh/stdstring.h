@@ -18,6 +18,7 @@ cl /nologo test.c -DMATCHDEMO       && test
 cl /nologo test.c -DREGEXDEMO       && test
 cl /nologo test.c -DREPLACEDEMO     && test
 cl /nologo test.c -DSPLITDEMO       && test
+cl /nologo test.c -DOPTIONDEMO      && test --client=off --server=true --port=1234 --user=bla@bla.com --distance=120km --time=2ms --bits=4Kib --health=(10+12)*10
 del test.c
 del *.obj
 del *.exe

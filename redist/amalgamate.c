@@ -28,6 +28,7 @@ int main() {
         include("transform.c");
         include("replace.c");
         include("split.c");
+        include("option.c");
         include("intern.c");
         include("fuzzy.c");
         include("utf.c");

@@ -9,6 +9,7 @@ C string library (STB style, header-only). Features:
 - String interning (quarks) (`intern`, `string`)
 - String matching (`strsub`, `strfindl`, `strfindr`, `strbegin`, `strend`, `strmatch`, `streq`, `streqi`)
 - String splitting (with and without allocations) (`strsplit`, `strchop`)
+- String options parsing (`stropt`, `stropti`, `stroptf`)
 - String transform utils (`strreplace`, `strtriml`, `strtrimr`, `strlower`)
 - String conversion utils (`strint`, `strhuman`, `strrobot`)
 - String unicode utils (`strutf8`, `strutf32`, `strwiden`)

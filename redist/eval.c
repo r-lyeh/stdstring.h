@@ -329,8 +329,12 @@ static void id_expr(struct eval *ev) {
         strcpy(id, ev->token[ev->cur_tok].s_val);
         lex(ev);
         if(EVAL_TYPE(ev) != '(') {
+            /**/ if(!istrcmp(id, "true"))  push(ev, 1.0);
+            else if(!istrcmp(id, "false")) push(ev, 0.0);
+            else if(!istrcmp(id, "on"))  push(ev, 1.0);
+            else if(!istrcmp(id, "off")) push(ev, 0.0);
             // pi - 3.141592654
-            if(!istrcmp(id, "pi"))
+            else if(!istrcmp(id, "pi"))
                 push(ev, EVAL_PI);
             // e - base of natural logarithms, 2.718281828
             else if(!istrcmp(id, "e"))

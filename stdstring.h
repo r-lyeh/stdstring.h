@@ -9,6 +9,7 @@
 /// - String interning (quarks) (`intern`, `string`)
 /// - String matching (`strsub`, `strfindl`, `strfindr`, `strbegin`, `strend`, `strmatch`, `streq`, `streqi`)
 /// - String splitting (with and without allocations) (`strsplit`, `strchop`)
+/// - String options parsing (`stropt`, `stropti`, `stroptf`)
 /// - String transform utils (`strreplace`, `strtriml`, `strtrimr`, `strlower`)
 /// - String conversion utils (`strint`, `strhuman`, `strrobot`)
 /// - String unicode utils (`strutf8`, `strutf32`, `strwiden`)
@@ -18,8 +19,9 @@
 /// - https://github.com/r-lyeh/stdstring.h
 ///
 /// # Changelog
-/// - 2018.1 (v1.0.1): *Fix wrong version of strcatf() in first commit; Cosmetics*
-/// - 2018.1 (v1.0.0): *Initial release*
+/// - 2018.1 (v1.0.2): *Add `stropt*()` options parser*
+/// - 2018.1 (v1.0.1): Fix wrong version of strcatf() in first commit; Cosmetics
+/// - 2018.1 (v1.0.0): Initial release
 ///
 /// # Credits
 /// - Using Rob Pike's regular expression (apparently public domain).
@@ -31,8 +33,6 @@
 /// # License
 /// - rlyeh, unlicensed (~public domain).
 /// 
-
-
 
 // API ------------------------------------------------------------------------
 
@@ -144,6 +144,15 @@ ABI      int64_t       strint  (const char *string);
 ABI TEMP char*         strhuman(uint64_t number);
 ABI      uint64_t      strrobot(const char *string);
 
+/// ## String options parsing
+/// - Parse argc/argv looking for comma-separated values. Returns matching string or `defaults`.
+/// - Parse argc/argv looking for comma-separated values. Returns matching integer or `defaults`.
+/// - Parse argc/argv looking for comma-separated values. Returns matching floating or `defaults`.
+///<C
+ABI      const char *  stropt ( const char *defaults, const char *options_csv );
+ABI      int64_t       stropti( int64_t defaults, const char *options_csv );
+ABI      double        stroptf( double defaults, const char *options_csv );
+
 /// ## String unicode utils
 /// - Extract 32bit codepoint from string.
 /// - Convert 32bit codepoint to utf8 string.
@@ -217,16 +226,18 @@ ABI HEAP wchar_t*      strwiden(const char *utf8);
 
 // String symbol that holds whole api declarations
 // Useful for function-foreign interface (FFI) and related script bindings.
-ABI const char * const strapi =
+ABI const char * const strapi() {
     #undef  API
     #define API(name, ...) #__VA_ARGS__
+    return
     #include __FILE__
     ;
+}
 
 #ifdef APIDEMO
 #include <stdio.h>
 int main() {
-    puts(strapi);
+    puts(strapi());
 }
 #endif
 
@@ -2395,8 +2406,12 @@ static void id_expr(struct eval *ev) {
         strcpy(id, ev->token[ev->cur_tok].s_val);
         lex(ev);
         if(EVAL_TYPE(ev) != '(') {
+            /**/ if(!istrcmp(id, "true"))  push(ev, 1.0);
+            else if(!istrcmp(id, "false")) push(ev, 0.0);
+            else if(!istrcmp(id, "on"))  push(ev, 1.0);
+            else if(!istrcmp(id, "off")) push(ev, 0.0);
             // pi - 3.141592654
-            if(!istrcmp(id, "pi"))
+            else if(!istrcmp(id, "pi"))
                 push(ev, EVAL_PI);
             // e - base of natural logarithms, 2.718281828
             else if(!istrcmp(id, "e"))
@@ -2744,7 +2759,7 @@ int64_t strint( const char *string ) { $
         while( *string >= '0' && *string <= '9') v = (v * 10) + *string++ - '0';
     }
     return n * v;
-};
+}
 
 static builtin(thread) char strhuman_buf[8] = {0};
 TEMP char *strhuman(uint64_t number) { $
@@ -2923,6 +2938,77 @@ int main() {
             printf("[%.*s],", (int)(uintptr_t)words[i+0], words[i+1]);
         }
     }
+}
+#endif
+
+// # string options parsing ###################################################
+// - rlyeh, public domain
+
+const char *stropt( const char *defaults, const char *options_csv ) { $
+    const char *tokens[128];
+    if( strchop( options_csv, ",", 128, tokens ) ) {
+        for( int t = 0; tokens[t]; t += 2 ) {
+            int size = (int)(uintptr_t)tokens[t];
+            const char *token = tokens[t+1];
+            for( int i = 1; i < __argc; ++i ) {
+                const char *kv = __argv[i];
+                if( strlen(kv) >= size && !memcmp( kv, token, size ) ) {
+                    kv += kv[size] == '=';
+                    defaults = kv[size] ? kv+size : defaults;
+                }
+            }
+        }
+    }
+    return defaults;
+}
+
+double stroptf( double defaults, const char *options_csv ) { $
+    const char *s = stropt( 0, options_csv );
+    if( !s ) return defaults;
+    // evaluate expression, includes on/off and true/false tokens
+    double v = streval( s );
+    if( v != v ) return defaults;
+    // skip digits and symbols
+    char charset[] = "0123456789+-/*^()";
+    s += strspn(s, charset);
+    // si units
+    double unit = 1.0;
+    /**/ if( *s == 'n' ) unit = 1e-9;
+    else if( *s == 'u' ) unit = 1e-6;
+    else if( *s == 'm' ) unit = 1e-3;
+    else if( *s == 'c' ) unit = 1e-2;
+    else if( *s == 'd' ) unit = 1e-1;
+    //   if( *s =='da' ) unit = 1e1;
+    else if( *s == 'h' ) unit = 1e2;
+    else if( *s == 'k' ) unit = 1e3;
+    else if( *s == 'K' ) unit = 1e3; /*alias*/
+    else if( *s == 'M' ) unit = 1e6;
+    else if( *s == 'G' ) unit = 1e9;
+    else if( *s == 'T' ) unit = 1e12;
+    // digital information conversion to kibi, mebi, gibi, etc
+    double conv = ( *s && s[1] == 'i' ? 1.024 : 1.0);
+    return v * unit * conv;
+}
+
+int64_t stropti( int64_t defaults, const char *options_csv ) { $
+    return (int64_t)stroptf( (double)defaults, options_csv );
+}
+
+#ifdef OPTIONDEMO
+#include <stdio.h>
+int main() {
+    // showcase:
+    // demo.exe
+    // demo.exe --client=off --server=true --user=another@mail.com
+    // demo.exe --port=1111 --distance=120km --time=2ms --bits=4Kib --health=(10+12)*10
+    printf("cfg.user: %s\n",     stropt("your@mail.com", "-u,--user"));
+    printf("cfg.port: %f\n",     stroptf(8080, "-p,--port"));
+    printf("cfg.client: %f\n",   stroptf(1, "-c,--client"));
+    printf("cfg.server: %f\n",   stroptf(0, "-s,--server"));
+    printf("cfg.distance: %f\n", stroptf(0, "-d,--distance"));
+    printf("cfg.time: %f\n",     stroptf(0, "-t,--time"));
+    printf("cfg.bits: %f\n",     stroptf(0, "-b,--bits"));
+    printf("cfg.health: %f\n",   stroptf(50, "-h,--health"));
 }
 #endif
 

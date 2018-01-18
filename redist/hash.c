@@ -1,7 +1,7 @@
 // ## Compile time string hash (pure C)
 // Based on code by http://lolengine.net/blog/2011/12/20/cpp-constant-string-hash
 // This macro is not always inlined. Depends on compilers and optimization flags.
-// For example g++ requires /O3 and msvc requires /O2 (verify output assembly with /Fa).
+// For example g++ requires -O3 and msvc requires /O2 (verify output assembly with /Fa).
 // About the hash function, it is using my own and free hashing algorithm.
 // - rlyeh, public domain.
 

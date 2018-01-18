@@ -1,0 +1,174 @@
+// Function to normalize resource identificators.
+// - rlyeh, public domain.
+//
+// Basically `strnorm(string)` does a string transformation from given string
+// to a deterministic pattern, which is guarnateed to remain inmutable (on a
+// high degree) on code, even if name of physical source is altered externally.
+// 
+// This means different unified resource URIs will have same string hash if they
+// point to the very same asset on disk. You usually want to normalize all your
+// asset URIs before hashing the paths and storing them in a virtual filesystem.
+//
+// As a bonus point, transforming a normalized uri will return the very same value.
+// 
+// ## Features
+// - Normalize folder/asset separators.
+// - Normalize English singular/plurals.
+// - Normalize AoS (OO) and SoA (ECS) disk layouts.
+// - Normalize absolute, relative, virtual and remote paths.
+// - Normalize uppercases, lowercases, whitespaces and hyphens.
+// - Normalize extensions, double extensions and double punctuations.
+// - Normalize SOV, SVO, VSO, VOS, OVS, OSV subject/verb/object language topologies.
+// - Normalize folder/file tagging (useful when globbing and deploying files and/or directories).
+// - Normalize previously unified ids (lossless process).
+//
+// ## Todo
+// - Normalize typos on unicode diacritics.
+//
+
+static
+int strnorm_strcmp(const void* a, const void* b) {
+    return strcmp(*(char* const*)a, *(char* const*)b);
+}
+
+
+static builtin(thread) char *strnorm_buf[16] = {0};
+static builtin(thread) int strnorm_buflevel = 0;
+
+TEMP char *strnorm( const char *uri ) {
+
+    strnorm_buflevel = (strnorm_buflevel+1) % 16;
+#define with (strnorm_buf[strnorm_buflevel])
+
+    // 1. @todo: unescape url here
+    // 2. @todo: convert diacritics into latin characters here (romanization)
+    // 3. lowercase
+    TEMP char *buf = strlower( strcpyf(&with, "%s", uri) );
+
+    // 4. remove url options at eos (if any)
+    strtrimle( buf, "?" );
+
+    // 5. split path "\\/" up to 2nd level only
+    HEAP char **tokens = strsplit( buf, "\\/" );
+    int n = 0; while( tokens[n] ) n++;
+    char *file = tokens[ n - 1 ];
+    char *path = n >= 2 ? tokens[ n - 2 ] : "";
+
+    // 6. strip all #tags and trim extensions
+    strtrimle(file, ".");
+    strtrimle(file, "#");
+    strtrimle(path, ".");
+    strtrimle(path, "#");
+    strcpyf( &with, "%s_%s", path, file );
+    FREE( tokens );
+
+    // 7. convert separators to underscores
+    strremap( with, " -,|;:()[]", "__________" );
+
+    // 8. split stems
+    HEAP char **words = strsplit(with, "_");
+
+    // 9. trim aos/soa plurals
+    int w = 0;
+    while( words[w] ) {
+        int L = strlen(words[w]);
+        if( words[w][L-1] == 's' ) words[w][L-1] = 0;
+        ++w;
+    }
+
+    // 10. sort and join stems
+    qsort(words, w, sizeof(char*), strnorm_strcmp);
+    strjoin(&with, words, "_");
+    FREE(words);
+
+    return &with[0];
+}
+
+
+#ifdef NORMDEMO
+#include <assert.h>
+#include <stdio.h>
+int main() {
+    const char *should_be;
+    #define test(expr) printf( "[%s] %s\n", !strcmp(strnorm(expr),should_be) ? " OK ":"FAIL", strnorm(expr) )
+    if( "test absolute, relative, virtual and remote paths" ) {
+        should_be = "folder_logo_main";
+        test( "~home/game/folder/main logo.jpg" );
+        test( "~user/game1/folder/main logo.jpg" );
+        test( "~mark/game2/folder/main logo.jpg" );
+        test( "~john/game3/data/folder/main logo.jpg" );
+        test( "../folder/main logo.jpg" );
+        test( "C:\\data\\folder\\main logo.jpg" );
+        test( "C:/game/data/folder/main logo.jpg" );
+        test( "data.zip/data/folder/main logo.jpg" );
+        test( "virtual.rar/folder/main logo.jpg" );
+        test( "http://web.domain.com%20/folder/main logo.jpg?blabla=123&abc=123#qwe" );
+    }
+    if( "test uppercases, lowercases, whitespaces and hyphens" ) {
+        should_be = "folder_logo_main";
+        test( "folder/main-logo" );
+        test( "folder/main_logo" );
+        test( "folder/Main logo" );
+        test( "folder / Main  logo " );
+    }
+    if( "test folder/asset separators" ) {
+        should_be = "folder_logo_main";
+        test( "folder/main-logo" );
+        test( "folder\\main-logo" );
+        test( "folder-main-logo" );
+        test( "folder_main-logo" );
+        test( "folder|main-logo" );
+        test( "folder:main-logo" );
+        test( "folder;main-logo" );
+        test( "folder,main-logo" );
+        test( "[folder]main-logo" );
+        test( "main-logo(folder)" );
+    }
+    if( "test extensions" ) {
+        should_be = "folder_logo_main";
+        test( "folder/main_logo.jpg" );
+        test( "folder/main_logo.png" );
+        test( "folder/main_logo.webp" );
+    }
+    if( "test double extensions and double punctuations" ) {
+        should_be = "folder_logo_main";
+        test( "folder/main logo.bmp.png" );
+        test( "folder/main  logo..png" );
+    }
+    if( "test diacritics" ) {
+        // @todo: diacritrics need additional utf8 pass. might be much slower though.
+        // should_be = "animation_walk";
+        // test( "âñimátïón/wàlk" );
+    }
+    if( "test AoS (OO) and SoA (ECS) disk layouts" ) {
+        should_be = "logo_purple";
+        test( "logos/purple" );
+        test( "purple/logo" );
+        should_be = "kid_sprite";
+        test( "sprites/kid" );
+        test( "kid/sprite" );
+    }
+    if( "test SOV, SVO, VSO, VOS, OVS, OSV subject/verb/object language topologies"
+        "test English plurals as well" ) {
+        should_be = "join_player_scene";
+        test( "player-joins-scene.intro" );
+        test( "player-scene-join.intro" );
+        test( "join-player-scene.intro" );
+        test( "join-scene-player.intro" );
+        test( "scene-join-player.intro" );
+        test( "scene-player-join.intro" );
+    }
+    if( "test folder/file tagging" ) {
+        should_be = "logo_splash";
+        test( "splash/logo" );
+        test( "/splash #win32/logo" );
+        test( "splash #mobile/logo #win32=always.png" );
+    }
+    if( "test re-normalization consistency" ) {
+        should_be = "folder_logo_main";
+        test( strnorm("main/folder-logo") );
+        test( strnorm(strnorm("main/folder-logo")) );
+    }
+    assert(~puts("Ok"));
+}
+#endif

@@ -25,9 +25,19 @@ int strregex(const char *string, const char *re) {
     return 0;
 }
 
+bool strmatch( const char *text, const char *pattern ) { $
+    if( *pattern=='\0' ) return !*text;
+    if( *pattern=='*' )  return strmatch(text, pattern+1) || (*text && strmatch(text+1, pattern));
+    if( *pattern=='?' )  return *text && (*text != '.') && strmatch(text+1, pattern+1);
+    return (*text == *pattern) && strmatch(text+1, pattern+1);
+}
+
 #ifdef REGEXDEMO
+#include <assert.h>
 #include <stdio.h>
 int main() {
-    printf("%d\n", strregex("hello123", "^hel?*$"));
+    assert( strregex("hello123", "^hel?*$") );
+    assert( strmatch("hello", "h?ll*") );
+    assert( ~puts("Ok.") );
 }
 #endif

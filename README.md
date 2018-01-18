@@ -8,9 +8,10 @@ C string library (STB style, header-only). Features:
 - String 64-bit hashing (both compile-time and runtime) (`strhash`)
 - String interning (quarks) (`intern`, `string`)
 - String matching (`strsub`, `strfindl`, `strfindr`, `strbegin`, `strend`, `strmatch`, `streq`, `streqi`)
-- String splitting (with and without allocations) (`strsplit`, `strchop`)
+- String splitting (with and without allocations) (`strsplit`, `strchop`, `strjoin`)
 - String options parsing (`stropt`, `stropti`, `stroptf`)
-- String transform utils (`strreplace`, `strtriml`, `strtrimr`, `strlower`)
+- String transform utils (`strrepl`, `strremap`, `strlower`, `strtrimlb/e`, `strtrimrb/e`)
+- String normalization (`strnorm`)
 - String conversion utils (`strint`, `strhuman`, `strrobot`)
 - String unicode utils (`strutf8`, `strutf32`, `strwiden`)
 - [Documentation](https://rawgit.com/r-lyeh/stdstring.h/master/stdstring.h.html).

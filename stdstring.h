@@ -8,9 +8,10 @@
 /// - String 64-bit hashing (both compile-time and runtime) (`strhash`)
 /// - String interning (quarks) (`intern`, `string`)
 /// - String matching (`strsub`, `strfindl`, `strfindr`, `strbegin`, `strend`, `strmatch`, `streq`, `streqi`)
-/// - String splitting (with and without allocations) (`strsplit`, `strchop`)
+/// - String splitting (with and without allocations) (`strsplit`, `strchop`, `strjoin`)
 /// - String options parsing (`stropt`, `stropti`, `stroptf`)
-/// - String transform utils (`strreplace`, `strtriml`, `strtrimr`, `strlower`)
+/// - String transform utils (`strrepl`, `strremap`, `strlower`, `strtrimlb/e`, `strtrimrb/e`)
+/// - String normalization (`strnorm`)
 /// - String conversion utils (`strint`, `strhuman`, `strrobot`)
 /// - String unicode utils (`strutf8`, `strutf32`, `strwiden`)
 /// - [Documentation](https://rawgit.com/r-lyeh/stdstring.h/master/stdstring.h.html).
@@ -19,9 +20,10 @@
 /// - https://github.com/r-lyeh/stdstring.h
 ///
 /// # Changelog
-/// - 2018.1 (v1.0.2): *Add `stropt*()` options parser*
-/// - 2018.1 (v1.0.1): Fix wrong version of strcatf() in first commit; Cosmetics
-/// - 2018.1 (v1.0.0): Initial release
+/// - 2018.1 (v1.0.3): Add `strnorm()`, `strjoin()`. Fix `strcpyf()`.
+/// - 2018.1 (v1.0.2): Add `stropt*()` options parser.
+/// - 2018.1 (v1.0.1): Fix wrong version of strcatf() in first commit. Cosmetics.
+/// - 2018.1 (v1.0.0): Initial release.
 ///
 /// # Credits
 /// - Using Rob Pike's regular expression (apparently public domain).
@@ -47,6 +49,80 @@ API(string,
 ///<C
 ABI      double        streval(const char *expression);
 
+/// ## String fuzzy completion
+/// - Compares two strings. Returns string matching score (higher is better).
+/// - Fuzzy search a word into a list of given words. Returns best match or empty string (if none).
+///<C
+ABI      int           strscore(const char *string1, const char *string2);
+ABI      const char *  strfuzzy(const char *string, int num, const char *words[]);
+
+/// ## String regular expression
+/// - Regular expression matching. returns non-zero if found.
+///   - `c` matches any literal character c.
+///   - `?` matches any single character.
+///   - `^` matches the beginning of the input string.
+///   - `$` matches the end of the input string.
+///   - `*` matches zero or more occurrences of the previous character.
+/// - Return true if string matches wildcard pattern expression (?*).
+///<C
+ABI      int           strregex(const char *string, const char *regex);
+ABI      bool          strmatch(const char *string, const char *substring);
+
+/// ## String hashing
+/// - Runtime string hash. Returns 64-bit hash of given string.
+/// - Compile-time string hash macro. Returns 64-bit hash of given string.
+/// - Note: Macro requires code optimizations enabled (`-O3` for gcc, `/O2` for MSVC).
+///<C
+ABI      uint64_t      strhash(const char *string);
+ABI      uint64_t      STRHASH(const char *string);
+
+/// ## String interning dictionary (quarks)
+/// - Insert string into dictionary (if not exists). Returns quark ID, or 0 if empty string.
+/// - Retrieve previously interned string. ID#0 returns empty string always.
+///<C
+ABI      int           intern(const char *string);
+ABI      const char *  string(int quark);
+
+/// ## String matching
+/// - Extract substring from position. Negative positions are relative to end of string.
+/// - Search substring from beginning (left). Returns end-of-string if not found.
+/// - Search substring from end (right). Returns end-of-string if not found.
+/// - Return true if string starts with substring.
+/// - Return true if string ends with substring.
+/// - Return true if strings are equal.
+/// - Return true if strings are equal (case insensitive).
+///<C
+ABI      const char*   strsub  (const char *string, int position);
+ABI      const char*   strfindl(const char *string, const char *substring);
+ABI      const char*   strfindr(const char *string, const char *substring);
+ABI      bool          strbegin(const char *string, const char *substring);
+ABI      bool          strend  (const char *string, const char *substring);
+ABI      bool          streq   (const char *string, const char *substring);
+ABI      bool          streqi  (const char *string, const char *substring);
+
+/// ## String normalization
+/// - Normalize resource identificator. Normalized uris have deterministic string hashes.
+///<C
+ABI TEMP char *        strnorm (const char *uri);
+
+/// ## String conversion utils
+/// - Convert a string to integer.
+/// - Convert number to human readable string (`12000000 -> 12M`)
+/// - Convert human readable string to number (`12M -> 12000000`)
+///<C
+ABI      int64_t       strint  (const char *string);
+ABI TEMP char*         strhuman(uint64_t number);
+ABI      uint64_t      strrobot(const char *string);
+
+/// ## String options parsing
+/// - Parse argc/argv looking for comma-separated values. Returns matching string or `defaults`.
+/// - Parse argc/argv looking for comma-separated values. Returns matching integer or `defaults`.
+/// - Parse argc/argv looking for comma-separated values. Returns matching floating or `defaults`.
+///<C
+ABI      const char *  stropt (const char *defaults, const char *options_csv);
+ABI      int64_t       stropti(int64_t defaults, const char *options_csv);
+ABI      double        stroptf(double defaults, const char *options_csv);
+
 /// ## String format (temporary buffers)
 /// - Format a C-style formatted string. Returns temporary buffer (do not `free()`).
 /// - Format a C-style formatted valist. Returns temporary buffer (do not `free()`).
@@ -66,95 +142,34 @@ ABI HEAP char *        strcpyfv(INOUT char **string, const char *format, va_list
 ABI HEAP char *        strcatf (INOUT char **string, const char *format, ...);
 ABI HEAP char *        strcatfv(INOUT char **string, const char *format, va_list list);
 
-/// ## String fuzzy completion
-/// - Compares two strings. Returns string matching score (higher is better).
-/// - Fuzzy search a word into a list of given words. Returns best match or empty string (if none).
-///<C
-ABI      int           strscore(const char *string1, const char *string2);
-ABI      const char *  strfuzzy(const char *string, int num, const char *words[]);
-
-/// ## Regular expression
-/// - regular expression matching. returns non-zero if found.
-/// - `c` matches any literal character c.
-/// - `?` matches any single character.
-/// - `^` matches the beginning of the input string.
-/// - `$` matches the end of the input string.
-/// - `*` matches zero or more occurrences of the previous character.
-///<C
-ABI      int           strregex(const char *string, const char *regex);
-
-/// ## String hashing
-/// - Runtime string hash. Returns 64-bit hash of given string.
-/// - Compile-time string hash macro. Returns 64-bit hash of given string.
-/// - Note: Macro requires code optimizations enabled (`/O3` for gcc, `-O2` for MSVC).
-///<C
-ABI      uint64_t      strhash(const char *string);
-ABI      uint64_t      STRHASH(const char *string);
-
-/// ## Interned string dictionary (quarks)
-/// - Insert string into dictionary (if not exists). Returns quark ID, or 0 if empty string.
-/// - Retrieve previously interned string. ID#0 returns empty string always.
-///<C
-ABI      int           intern(const char *string);
-ABI      const char *  string(int quark);
-
-/// ## String matching
-/// - Extract substring from position. Negative positions are relative to end of string.
-/// - Search substring from beginning (left).
-/// - Search substring from end (right).
-/// - Return true if string starts with substring.
-/// - Return true if string ends with substring.
-/// - Return true if string matches wildcard pattern expression.
-/// - Return true if strings are equal.
-/// - Return true if strings are equal (case insensitive).
-///<C
-ABI      const char*   strsub  (const char *string, int position);
-ABI      const char*   strfindl(const char *string, const char *substring);
-ABI      const char*   strfindr(const char *string, const char *substring);
-ABI      bool          strbegin(const char *string, const char *substring);
-ABI      bool          strend  (const char *string, const char *substring);
-ABI      bool          strmatch(const char *string, const char *substring);
-ABI      bool          streq   (const char *string, const char *substring);
-ABI      bool          streqi  (const char *string, const char *substring);
-
 /// ## String splitting
-/// - Check delimiters and split string into tokens. Returns null-terminated list.
 /// - Check delimiters and split string into tokens. Function never allocates.
+/// - Check delimiters and split string into tokens. Returns null-terminated list.
+/// - Join tokens into a string.
 ///<C
+ABI      int           strchop (const char *string, const char *delimiters, int avail, const char *tokens[]);
 ABI HEAP char**        strsplit(const char *string, const char *delimiters);
-ABI      int           strchop (const char *string, const char *delimiters, int avail, const char **tokens);
+ABI HEAP char*         strjoin (INOUT char **out, const char *tokens[], const char *separator);
 
 /// ## String transforms
-/// - Replace a substring in a string. Returns copy of input string no match is found.
-/// - Trim characters from 0 to first search occurence. Trail characters remain intact.
-/// - Trim characters from last search occurence to end of string. Lead characters remain intact.
+/// - Replace a substring in a string.
+/// - Remap specific characters in a string from a given set to another one. Length of both sets must be identical.
 /// - Convert a string to lowercase (function is not utf8/locale aware!).
+/// - Trim characters from left search (find-first) until begin of string (`b-str-str-e` to `x-xxx-str--e`).
+/// - Trim characters from left search (find-first) until end of string (`b-str-str-e` to `b-xxx-xxx-x`).
+/// - Trim characters from right search (last-find) until begin of string (`b-str-str-e` to `x-xxx-xxx-e`).
+/// - Trim characters from right search (last-find) until end of string (`b-str-str-e` to `b-str-xxx-x`).
 ///<C
-ABI HEAP char*         strreplace(const char *string, const char *source, const char *target);
-ABI HEAP char*         strtriml  (char *string, const char *substring);
-ABI HEAP char*         strtrimr  (char *string, const char *substring);
-ABI HEAP char*         strlower  (char *string);
-
-/// ## String conversion utils
-/// - Convert a string to integer.
-/// - Convert number to human readable string (`12000000 -> 12M`)
-/// - Convert human readable string to number (`12M -> 12000000`)
-///<C
-ABI      int64_t       strint  (const char *string);
-ABI TEMP char*         strhuman(uint64_t number);
-ABI      uint64_t      strrobot(const char *string);
-
-/// ## String options parsing
-/// - Parse argc/argv looking for comma-separated values. Returns matching string or `defaults`.
-/// - Parse argc/argv looking for comma-separated values. Returns matching integer or `defaults`.
-/// - Parse argc/argv looking for comma-separated values. Returns matching floating or `defaults`.
-///<C
-ABI      const char *  stropt ( const char *defaults, const char *options_csv );
-ABI      int64_t       stropti( int64_t defaults, const char *options_csv );
-ABI      double        stroptf( double defaults, const char *options_csv );
+ABI HEAP char*         strrepl  (INOUT char **string, const char *target, const char *replace);
+ABI      char*         strremap (INOUT char *string, const char srcs[], const char dsts[]);
+ABI      char*         strlower (char *string);
+ABI      char*         strtrimlb(char *string, const char *substring);
+ABI      char*         strtrimle(char *string, const char *substring);
+ABI      char*         strtrimrb(char *string, const char *substring);
+ABI      char*         strtrimre(char *string, const char *substring);
 
 /// ## String unicode utils
-/// - Extract 32bit codepoint from string.
+/// - Extract 32bit codepoint from string. Also advances input string to next codepoint.
 /// - Convert 32bit codepoint to utf8 string.
 /// - Convert utf8 to utf16 string (Windows only).
 ///<C
@@ -2604,10 +2619,20 @@ int strregex(const char *string, const char *re) {
     return 0;
 }
 
+bool strmatch( const char *text, const char *pattern ) { $
+    if( *pattern=='\0' ) return !*text;
+    if( *pattern=='*' )  return strmatch(text, pattern+1) || (*text && strmatch(text+1, pattern));
+    if( *pattern=='?' )  return *text && (*text != '.') && strmatch(text+1, pattern+1);
+    return (*text == *pattern) && strmatch(text+1, pattern+1);
+}
+
 #ifdef REGEXDEMO
+#include <assert.h>
 #include <stdio.h>
 int main() {
-    printf("%d\n", strregex("hello123", "^hel?*$"));
+    assert( strregex("hello123", "^hel?*$") );
+    assert( strmatch("hello", "h?ll*") );
+    assert( ~puts("Ok.") );
 }
 #endif
 
@@ -2639,7 +2664,7 @@ HEAP char *strcpyfv( char **str, const char *fmt, va_list lst ) { //$
     TEMP char *buf = strfv( fmt, lst );
     if( str && *str ) {
         int len = strlen(buf) + 1;
-        (*str) = (char*)REALLOC( str && (*str) ? str : 0, len );
+        (*str) = (char*)REALLOC( str && (*str) ? (*str) : 0, len );
         memcpy( (*str), buf, len );
         return *str;
     } else {
@@ -2686,17 +2711,18 @@ const char *strsub( const char *str, int pos ) { $
 }
 
 const char* strfindl(const char *text, const char *substring) { $
-    return strstr( text, substring );
+    const char *found = strstr( text, substring );
+    return found ? found : text + strlen(text);
 }
 const char* strfindr(const char *text, const char *substring) { $
-    char *result = 0;
+    char *found = 0;
     while(1) {
-        char *found = strstr(text, substring);
-        if( !found ) break;
-        result = found;
-        text = found + 1;
+        char *found2 = strstr(text, substring);
+        if( !found2 ) break;
+        found = found2;
+        text = found2 + 1;
     }
-    return result;
+    return found ? found : text + strlen(text);
 }
 
 bool strbegin( const char *text, const char *substring ) { $
@@ -2707,13 +2733,6 @@ bool strbegin( const char *text, const char *substring ) { $
 bool strend( const char *text, const char *substring ) { $
     int s1 = strlen(text), s2 = strlen(substring);
     return s1 >= s2 ? 0 == memcmp( &text[ s1 - s2 ], substring, s2 ) : false;
-}
-
-bool strmatch( const char *text, const char *pattern ) { $
-    if( *pattern=='\0' ) return !*text;
-    if( *pattern=='*' )  return strmatch(text, pattern+1) || (*text && strmatch(text+1, pattern));
-    if( *pattern=='?' )  return *text && (*text != '.') && strmatch(text+1, pattern+1);
-    return (*text == *pattern) && strmatch(text+1, pattern+1);
 }
 
 bool streq( const char *string, const char *substr ) { $
@@ -2735,8 +2754,6 @@ int main() {
 
     assert( streqi("hello", "hello") );
     assert( streqi("HELLO", "hello") );
-
-    assert( strmatch("hello", "h?ll*") );
 
     assert( strbegin("hello", "hell") );
     assert(!strbegin("hell", "hello") );
@@ -2831,7 +2848,7 @@ int main() {
 #include <string.h>
 #include <stdlib.h>
 
-char* strtriml(char *string, const char *substring) { $
+char* strtrimlb(char *string, const char *substring) { $
     char *found = strstr(string, substring);
     if( found ) {
         int L = strlen(substring);
@@ -2839,9 +2856,18 @@ char* strtriml(char *string, const char *substring) { $
     }
     return string;
 }
-char* strtrimr(char *string, const char *substring) { $
-    char *found = (char*)strfindr(string, substring);
-    if( found ) found[0] = '\0';
+char* strtrimle(char *string, const char *substring) { $
+    ((char *)strfindl(string, substring))[0] = 0;
+    return string;
+}
+char* strtrimrb(char *string, const char *substring) { $
+    const char *found = strfindr(string, substring);
+    int L = strlen(substring);
+    memmove( string, found + L, strlen(found) - L + 1);
+    return string;
+}
+char* strtrimre(char *string, const char *substring) { $
+    ((char *)strfindr(string, substring))[0] = 0;
     return string;
 }
 char *strlower(char *string) { $
@@ -2850,15 +2876,46 @@ char *strlower(char *string) { $
     }
     return string;
 }
+char *strremap( INOUT char *string, const char srcs[], const char dsts[] ) { $
+    uint8_t map[256] =
+    "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+    "\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f"
+    "\x20\x21\x22\x23\x24\x25\x26\x27\x28\x29\x2a\x2b\x2c\x2d\x2e\x2f"
+    "\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39\x3a\x3b\x3c\x3d\x3e\x3f"
+    "\x40\x41\x42\x43\x44\x45\x46\x47\x48\x49\x4a\x4b\x4c\x4d\x4e\x4f"
+    "\x50\x51\x52\x53\x54\x55\x56\x57\x58\x59\x5a\x5b\x5c\x5d\x5e\x5f"
+    "\x60\x61\x62\x63\x64\x65\x66\x67\x68\x69\x6a\x6b\x6c\x6d\x6e\x6f"
+    "\x70\x71\x72\x73\x74\x75\x76\x77\x78\x79\x7a\x7b\x7c\x7d\x7e\x7f"
+    "\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f"
+    "\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f"
+    "\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf"
+    "\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf"
+    "\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf"
+    "\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf"
+    "\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef"
+    "\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff";
+    for( int i = 0; srcs[i]; ++i) map[(uint8_t)srcs[i]] = dsts[i];
+    for( int i = 0; string[i]; ++i ) string[i] = map[(uint8_t)string[i]];
+    return string;
+}
 
 #ifdef TRANSFORMDEMO
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 int main() {
-    char buf1[] = "[[helloworld--helloworld]]";
-    assert( 0 == strcmp( "--helloworld]]", strtriml(buf1, "world")) );
-    assert( 0 == strcmp( "--",             strtrimr(buf1, "hello")) );
+    {
+        char buf1[] = "hellohelloworldworld";
+        char buf2[] = "hellohelloworldworld";
+        char buf3[] = "hellohelloworldworld";
+        char buf4[] = "hellohelloworldworld";
+        strtrimlb(buf1, "ell"); puts(buf1); assert( 0 == strcmp( buf1, "ohelloworldworld") );
+        strtrimle(buf2, "ell"); puts(buf2); assert( 0 == strcmp( buf2, "h") );
+        strtrimrb(buf3, "ell"); puts(buf3); assert( 0 == strcmp( buf3, "oworldworld") );
+        strtrimre(buf4, "ell"); puts(buf4); assert( 0 == strcmp( buf4, "helloh") );
+    }
+    char remap[] = "H3110 W0r1d";
+    assert( 0 == strcmp( "Hello World", strremap(remap, "310", "elo")));
     assert(~puts("Ok"));
 }
 #endif
@@ -2866,31 +2923,42 @@ int main() {
 // ## replace substring in a string
 // - rlyeh, public domain.
 
-HEAP char *strreplace(const char *string, const char *source, const char *target) { $
-    HEAP char *buf = 0;
-    char *found;
-    const char *copy = string;
-    for( int srclen = strlen(source); srclen && string[0]; ) {
-        if( 0 != (found = strstr( string, source )) ) {
-            strcatf(&buf, "%.*s%s", (int)(found - string), string, target);
-            string += (found - string) + srclen;
+#include <assert.h>
+
+HEAP char *strrepl(char **string, const char *target, const char *replace) { $
+    assert( string );
+    char HEAP *buf = 0, *aux = *string;
+    for( int tgtlen = strlen(target); tgtlen && aux[0]; ) {
+        char *found = strstr(aux, target);
+        if( found ) {
+            strcatf(&buf, "%.*s%s", (int)(found - aux), aux, replace);
+            aux += (found - aux) + tgtlen;
         } else {
-            strcatf(&buf, "%s", string);
+            strcatf(&buf, "%s", aux);
             break;
         }
     }
-    return buf ? buf : STRDUP( copy ); // strcatf( 0, "%s", copy );
+    if( buf ) {
+        strcpyf(string, "%s", buf);
+        FREE( buf );
+    }
+    return *string;
 }
 
 #ifdef REPLACEDEMO
+#include <stdio.h>
 int main() {
-      puts(strreplace("mary has a little lamb little lamb", "little", "little"));
-      puts(strreplace("mary has a little lamb little lamb", "big", "big"));
-      puts(strreplace("mary has a big lamb big lamb", "big", "little"));
-
-      puts(strreplace("mary has a little lamb little lamb", "little", "big"));
-      puts(strreplace("mary has a little lamb little lamb", "little ", ""));
-      puts(strreplace("mary has a little lamb little lamb", "", "little"));
+      #define test(a,b,eq) do { \
+        char *buf = strcpyf(0, "%s", "mary has a little lamb little lamb"); \
+        puts(strrepl(&buf, a, b)); \
+        assert( 0 == strcmp(eq, buf) ); \
+        free(buf); \
+      } while(0)
+      test("little" /*->*/, "little", /*==*/ "mary has a little lamb little lamb");
+      test("big"    /*->*/, "little", /*==*/ "mary has a little lamb little lamb");
+      test("little" /*->*/, "big",    /*==*/ "mary has a big lamb big lamb");
+      test("little "/*->*/, "",       /*==*/ "mary has a lamb lamb");
+      test(""       /*->*/, "little", /*==*/ "mary has a little lamb little lamb");
 }
 #endif
 
@@ -2901,17 +2969,7 @@ int main() {
 #include <string.h>
 #include <assert.h>
 
-HEAP char **strsplit( const char *string, const char *delimiters ) { $
-    int len = sizeof(char *) * (strlen(string)/2+1+1), i = 0;
-    char **res = (char **)CALLOC(1, len + strlen(string) + 1 );
-    char *buf = strcpy( (char *)res + len, string );
-    for( char *token = strtok(buf, delimiters); token; token = strtok(NULL, delimiters) ) {
-        res[i++] = token;
-    }
-    return res;
-}
-
-int strchop( const char *string, const char *delimiters, int avail, const char **tokens ) { $
+int strchop( const char *string, const char *delimiters, int avail, const char *tokens[] ) { $
     assert( avail >= 4 && 0 == ( avail % 2 ) );
     for( avail /= 2; *string && avail-- > 0; ) {
         int n = strcspn( string += strspn(string, delimiters), delimiters );
@@ -2921,14 +2979,33 @@ int strchop( const char *string, const char *delimiters, int avail, const char *
     return *tokens++ = 0, *tokens = 0, avail > 0;
 }
 
+HEAP char **strsplit( const char *string, const char *delimiters ) { $
+    int L = strlen(string), len = sizeof(char *) * (L/2+1+1), i = 0;
+    char **res = (char **)CALLOC(1, len + L + 1 );
+    char *buf = strcpy( (char *)res + len, string );
+    for( char *token = strtok(buf, delimiters); token; token = strtok(NULL, delimiters) ) {
+        res[i++] = token;
+    }
+    return res;
+}
+
+HEAP char* strjoin( char **string, const char *words[], const char *separator ) {
+    char *(*table[2])( char **, const char *, ... ) = { strcpyf, strcatf };
+    char *out = string ? *string : 0;
+    for( int i = 0; words[i] /*i < nwords*/; ++i ) {
+        table[!!i]( &out, "%s%s", i > 0 ? separator : "", words[i] );
+    }
+    return string ? *string = out : out;
+}
+
 #ifdef SPLITDEMO
 #include <stdio.h>
 int main() {
     // split input text into tokens. allocates once.
-    char **tokens = strsplit("JAN,;,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC", ",;");
-    for (int i = 0; tokens[i]; i++) {
-        printf("[%s],", tokens[i]);
-    }
+    HEAP char **tokens = strsplit("JAN,;,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC", ",;");
+    HEAP char *joint = strjoin( 0, tokens, "/" );
+    puts( joint );
+    free( joint );
     free( tokens );
 
     // split input text into tokens. does not allocate.
@@ -3009,6 +3086,181 @@ int main() {
     printf("cfg.time: %f\n",     stroptf(0, "-t,--time"));
     printf("cfg.bits: %f\n",     stroptf(0, "-b,--bits"));
     printf("cfg.health: %f\n",   stroptf(50, "-h,--health"));
+}
+#endif
+
+// Function to normalize resource identificators.
+// - rlyeh, public domain.
+//
+// Basically `strnorm(string)` does a string transformation from given string
+// to a deterministic pattern, which is guarnateed to remain inmutable (on a
+// high degree) on code, even if name of physical source is altered externally.
+// 
+// This means different unified resource URIs will have same string hash if they
+// point to the very same asset on disk. You usually want to normalize all your
+// asset URIs before hashing the paths and storing them in a virtual filesystem.
+//
+// As a bonus point, transforming a normalized uri will return the very same value.
+// 
+// ## Features
+// - Normalize folder/asset separators.
+// - Normalize English singular/plurals.
+// - Normalize AoS (OO) and SoA (ECS) disk layouts.
+// - Normalize absolute, relative, virtual and remote paths.
+// - Normalize uppercases, lowercases, whitespaces and hyphens.
+// - Normalize extensions, double extensions and double punctuations.
+// - Normalize SOV, SVO, VSO, VOS, OVS, OSV subject/verb/object language topologies.
+// - Normalize folder/file tagging (useful when globbing and deploying files and/or directories).
+// - Normalize previously unified ids (lossless process).
+//
+// ## Todo
+// - Normalize typos on unicode diacritics.
+//
+
+static
+int strnorm_strcmp(const void* a, const void* b) {
+    return strcmp(*(char* const*)a, *(char* const*)b);
+}
+
+
+static builtin(thread) char *strnorm_buf[16] = {0};
+static builtin(thread) int strnorm_buflevel = 0;
+
+TEMP char *strnorm( const char *uri ) {
+
+    strnorm_buflevel = (strnorm_buflevel+1) % 16;
+#define with (strnorm_buf[strnorm_buflevel])
+
+    // 1. @todo: unescape url here
+    // 2. @todo: convert diacritics into latin characters here (romanization)
+    // 3. lowercase
+    TEMP char *buf = strlower( strcpyf(&with, "%s", uri) );
+
+    // 4. remove url options at eos (if any)
+    strtrimle( buf, "?" );
+
+    // 5. split path "\\/" up to 2nd level only
+    HEAP char **tokens = strsplit( buf, "\\/" );
+    int n = 0; while( tokens[n] ) n++;
+    char *file = tokens[ n - 1 ];
+    char *path = n >= 2 ? tokens[ n - 2 ] : "";
+
+    // 6. strip all #tags and trim extensions
+    strtrimle(file, ".");
+    strtrimle(file, "#");
+    strtrimle(path, ".");
+    strtrimle(path, "#");
+    strcpyf( &with, "%s_%s", path, file );
+    FREE( tokens );
+
+    // 7. convert separators to underscores
+    strremap( with, " -,|;:()[]", "__________" );
+
+    // 8. split stems
+    HEAP char **words = strsplit(with, "_");
+
+    // 9. trim aos/soa plurals
+    int w = 0;
+    while( words[w] ) {
+        int L = strlen(words[w]);
+        if( words[w][L-1] == 's' ) words[w][L-1] = 0;
+        ++w;
+    }
+
+    // 10. sort and join stems
+    qsort(words, w, sizeof(char*), strnorm_strcmp);
+    strjoin(&with, words, "_");
+    FREE(words);
+
+    return &with[0];
+}
+
+
+#ifdef NORMDEMO
+#include <assert.h>
+#include <stdio.h>
+int main() {
+    const char *should_be;
+    #define test(expr) printf( "[%s] %s\n", !strcmp(strnorm(expr),should_be) ? " OK ":"FAIL", strnorm(expr) )
+    if( "test absolute, relative, virtual and remote paths" ) {
+        should_be = "folder_logo_main";
+        test( "~home/game/folder/main logo.jpg" );
+        test( "~user/game1/folder/main logo.jpg" );
+        test( "~mark/game2/folder/main logo.jpg" );
+        test( "~john/game3/data/folder/main logo.jpg" );
+        test( "../folder/main logo.jpg" );
+        test( "C:\\data\\folder\\main logo.jpg" );
+        test( "C:/game/data/folder/main logo.jpg" );
+        test( "data.zip/data/folder/main logo.jpg" );
+        test( "virtual.rar/folder/main logo.jpg" );
+        test( "http://web.domain.com%20/folder/main logo.jpg?blabla=123&abc=123#qwe" );
+    }
+    if( "test uppercases, lowercases, whitespaces and hyphens" ) {
+        should_be = "folder_logo_main";
+        test( "folder/main-logo" );
+        test( "folder/main_logo" );
+        test( "folder/Main logo" );
+        test( "folder / Main  logo " );
+    }
+    if( "test folder/asset separators" ) {
+        should_be = "folder_logo_main";
+        test( "folder/main-logo" );
+        test( "folder\\main-logo" );
+        test( "folder-main-logo" );
+        test( "folder_main-logo" );
+        test( "folder|main-logo" );
+        test( "folder:main-logo" );
+        test( "folder;main-logo" );
+        test( "folder,main-logo" );
+        test( "[folder]main-logo" );
+        test( "main-logo(folder)" );
+    }
+    if( "test extensions" ) {
+        should_be = "folder_logo_main";
+        test( "folder/main_logo.jpg" );
+        test( "folder/main_logo.png" );
+        test( "folder/main_logo.webp" );
+    }
+    if( "test double extensions and double punctuations" ) {
+        should_be = "folder_logo_main";
+        test( "folder/main logo.bmp.png" );
+        test( "folder/main  logo..png" );
+    }
+    if( "test diacritics" ) {
+        // @todo: diacritrics need additional utf8 pass. might be much slower though.
+        // should_be = "animation_walk";
+        // test( "âñimátïón/wàlk" );
+    }
+    if( "test AoS (OO) and SoA (ECS) disk layouts" ) {
+        should_be = "logo_purple";
+        test( "logos/purple" );
+        test( "purple/logo" );
+        should_be = "kid_sprite";
+        test( "sprites/kid" );
+        test( "kid/sprite" );
+    }
+    if( "test SOV, SVO, VSO, VOS, OVS, OSV subject/verb/object language topologies"
+        "test English plurals as well" ) {
+        should_be = "join_player_scene";
+        test( "player-joins-scene.intro" );
+        test( "player-scene-join.intro" );
+        test( "join-player-scene.intro" );
+        test( "join-scene-player.intro" );
+        test( "scene-join-player.intro" );
+        test( "scene-player-join.intro" );
+    }
+    if( "test folder/file tagging" ) {
+        should_be = "logo_splash";
+        test( "splash/logo" );
+        test( "/splash #win32/logo" );
+        test( "splash #mobile/logo #win32=always.png" );
+    }
+    if( "test re-normalization consistency" ) {
+        should_be = "folder_logo_main";
+        test( strnorm("main/folder-logo") );
+        test( strnorm(strnorm("main/folder-logo")) );
+    }
+    assert(~puts("Ok"));
 }
 #endif
 
@@ -3236,7 +3488,7 @@ int main() {
 // ## Compile time string hash (pure C)
 // Based on code by http://lolengine.net/blog/2011/12/20/cpp-constant-string-hash
 // This macro is not always inlined. Depends on compilers and optimization flags.
-// For example g++ requires /O3 and msvc requires /O2 (verify output assembly with /Fa).
+// For example g++ requires -O3 and msvc requires /O2 (verify output assembly with /Fa).
 // About the hash function, it is using my own and free hashing algorithm.
 // - rlyeh, public domain.
 

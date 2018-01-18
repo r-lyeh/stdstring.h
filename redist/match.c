@@ -12,17 +12,18 @@ const char *strsub( const char *str, int pos ) { $
 }
 
 const char* strfindl(const char *text, const char *substring) { $
-    return strstr( text, substring );
+    const char *found = strstr( text, substring );
+    return found ? found : text + strlen(text);
 }
 const char* strfindr(const char *text, const char *substring) { $
-    char *result = 0;
+    char *found = 0;
     while(1) {
-        char *found = strstr(text, substring);
-        if( !found ) break;
-        result = found;
-        text = found + 1;
+        char *found2 = strstr(text, substring);
+        if( !found2 ) break;
+        found = found2;
+        text = found2 + 1;
     }
-    return result;
+    return found ? found : text + strlen(text);
 }
 
 bool strbegin( const char *text, const char *substring ) { $
@@ -33,13 +34,6 @@ bool strbegin( const char *text, const char *substring ) { $
 bool strend( const char *text, const char *substring ) { $
     int s1 = strlen(text), s2 = strlen(substring);
     return s1 >= s2 ? 0 == memcmp( &text[ s1 - s2 ], substring, s2 ) : false;
-}
-
-bool strmatch( const char *text, const char *pattern ) { $
-    if( *pattern=='\0' ) return !*text;
-    if( *pattern=='*' )  return strmatch(text, pattern+1) || (*text && strmatch(text+1, pattern));
-    if( *pattern=='?' )  return *text && (*text != '.') && strmatch(text+1, pattern+1);
-    return (*text == *pattern) && strmatch(text+1, pattern+1);
 }
 
 bool streq( const char *string, const char *substr ) { $
@@ -61,8 +55,6 @@ int main() {
 
     assert( streqi("hello", "hello") );
     assert( streqi("HELLO", "hello") );
-
-    assert( strmatch("hello", "h?ll*") );
 
     assert( strbegin("hello", "hell") );
     assert(!strbegin("hell", "hello") );

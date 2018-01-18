@@ -26,7 +26,7 @@ HEAP char *strcpyfv( char **str, const char *fmt, va_list lst ) { //$
     TEMP char *buf = strfv( fmt, lst );
     if( str && *str ) {
         int len = strlen(buf) + 1;
-        (*str) = (char*)REALLOC( str && (*str) ? str : 0, len );
+        (*str) = (char*)REALLOC( str && (*str) ? (*str) : 0, len );
         memcpy( (*str), buf, len );
         return *str;
     } else {

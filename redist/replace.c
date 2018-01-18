@@ -1,30 +1,41 @@
 // ## replace substring in a string
 // - rlyeh, public domain.
 
-HEAP char *strreplace(const char *string, const char *source, const char *target) { $
-    HEAP char *buf = 0;
-    char *found;
-    const char *copy = string;
-    for( int srclen = strlen(source); srclen && string[0]; ) {
-        if( 0 != (found = strstr( string, source )) ) {
-            strcatf(&buf, "%.*s%s", (int)(found - string), string, target);
-            string += (found - string) + srclen;
+#include <assert.h>
+
+HEAP char *strrepl(char **string, const char *target, const char *replace) { $
+    assert( string );
+    char HEAP *buf = 0, *aux = *string;
+    for( int tgtlen = strlen(target); tgtlen && aux[0]; ) {
+        char *found = strstr(aux, target);
+        if( found ) {
+            strcatf(&buf, "%.*s%s", (int)(found - aux), aux, replace);
+            aux += (found - aux) + tgtlen;
         } else {
-            strcatf(&buf, "%s", string);
+            strcatf(&buf, "%s", aux);
             break;
         }
     }
-    return buf ? buf : STRDUP( copy ); // strcatf( 0, "%s", copy );
+    if( buf ) {
+        strcpyf(string, "%s", buf);
+        FREE( buf );
+    }
+    return *string;
 }
 
 #ifdef REPLACEDEMO
+#include <stdio.h>
 int main() {
-      puts(strreplace("mary has a little lamb little lamb", "little", "little"));
-      puts(strreplace("mary has a little lamb little lamb", "big", "big"));
-      puts(strreplace("mary has a big lamb big lamb", "big", "little"));
-
-      puts(strreplace("mary has a little lamb little lamb", "little", "big"));
-      puts(strreplace("mary has a little lamb little lamb", "little ", ""));
-      puts(strreplace("mary has a little lamb little lamb", "", "little"));
+      #define test(a,b,eq) do { \
+        char *buf = strcpyf(0, "%s", "mary has a little lamb little lamb"); \
+        puts(strrepl(&buf, a, b)); \
+        assert( 0 == strcmp(eq, buf) ); \
+        free(buf); \
+      } while(0)
+      test("little" /*->*/, "little", /*==*/ "mary has a little lamb little lamb");
+      test("big"    /*->*/, "little", /*==*/ "mary has a little lamb little lamb");
+      test("little" /*->*/, "big",    /*==*/ "mary has a big lamb big lamb");
+      test("little "/*->*/, "",       /*==*/ "mary has a lamb lamb");
+      test(""       /*->*/, "little", /*==*/ "mary has a little lamb little lamb");
 }
 #endif

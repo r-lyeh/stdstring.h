@@ -5,17 +5,7 @@
 #include <string.h>
 #include <assert.h>
 
-HEAP char **strsplit( const char *string, const char *delimiters ) { $
-    int len = sizeof(char *) * (strlen(string)/2+1+1), i = 0;
-    char **res = (char **)CALLOC(1, len + strlen(string) + 1 );
-    char *buf = strcpy( (char *)res + len, string );
-    for( char *token = strtok(buf, delimiters); token; token = strtok(NULL, delimiters) ) {
-        res[i++] = token;
-    }
-    return res;
-}
-
-int strchop( const char *string, const char *delimiters, int avail, const char **tokens ) { $
+int strchop( const char *string, const char *delimiters, int avail, const char *tokens[] ) { $
     assert( avail >= 4 && 0 == ( avail % 2 ) );
     for( avail /= 2; *string && avail-- > 0; ) {
         int n = strcspn( string += strspn(string, delimiters), delimiters );
@@ -25,14 +15,33 @@ int strchop( const char *string, const char *delimiters, int avail, const char *
     return *tokens++ = 0, *tokens = 0, avail > 0;
 }
 
+HEAP char **strsplit( const char *string, const char *delimiters ) { $
+    int L = strlen(string), len = sizeof(char *) * (L/2+1+1), i = 0;
+    char **res = (char **)CALLOC(1, len + L + 1 );
+    char *buf = strcpy( (char *)res + len, string );
+    for( char *token = strtok(buf, delimiters); token; token = strtok(NULL, delimiters) ) {
+        res[i++] = token;
+    }
+    return res;
+}
+
+HEAP char* strjoin( char **string, const char *words[], const char *separator ) {
+    char *(*table[2])( char **, const char *, ... ) = { strcpyf, strcatf };
+    char *out = string ? *string : 0;
+    for( int i = 0; words[i] /*i < nwords*/; ++i ) {
+        table[!!i]( &out, "%s%s", i > 0 ? separator : "", words[i] );
+    }
+    return string ? *string = out : out;
+}
+
 #ifdef SPLITDEMO
 #include <stdio.h>
 int main() {
     // split input text into tokens. allocates once.
-    char **tokens = strsplit("JAN,;,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC", ",;");
-    for (int i = 0; tokens[i]; i++) {
-        printf("[%s],", tokens[i]);
-    }
+    HEAP char **tokens = strsplit("JAN,;,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC", ",;");
+    HEAP char *joint = strjoin( 0, tokens, "/" );
+    puts( joint );
+    free( joint );
     free( tokens );
 
     // split input text into tokens. does not allocate.

@@ -175,7 +175,7 @@ ABI      char*         strtrimre(char *string, const char *substring);
 ///<C
 ABI      uint32_t      strutf32(INOUT const char **utf8);
 ABI TEMP char *        strutf8(uint32_t codepoint);
-ABI HEAP wchar_t*      strwiden(const char *utf8);
+ABI TEMP wchar_t*      strwiden(const char *utf8);
 ///>
 
 );

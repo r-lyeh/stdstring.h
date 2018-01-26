@@ -49,11 +49,12 @@ TEMP char *strutf8(uint32_t cp) { $
 
 #ifdef _WIN32
 #include <shlobj.h>
-HEAP wchar_t *strwiden(const char *utf8) { $ // wide strings (windows only)
+TEMP wchar_t *strwiden(const char *utf8) { $ // wide strings (windows only)
+    static builtin(thread) char *buf = 0;
     int needed = 2 * MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
-    void *out = CALLOC( 1, needed + 1 );
-    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, out, needed);
-    return (wchar_t *)out;
+    buf = REALLOC( buf, needed + 1 ); buf[needed] = 0;
+    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, (void*)buf, needed);
+    return (wchar_t *)buf;
 }
 #endif
 
@@ -61,12 +62,17 @@ HEAP wchar_t *strwiden(const char *utf8) { $ // wide strings (windows only)
 #include <assert.h>
 int main() {
     const char *text = "私 は ガ";
-    assert( strutf32(&text) == 31169 );
-    assert( strutf32(&text) == 32 );
-    assert( strutf32(&text) == 12399 );
-    assert( strutf32(&text) == 32 );
-    assert( strutf32(&text) == 12460 );
-    assert( strutf32(&text) == 0 );
+    const char *copy = text;
+    assert( strutf32(&copy) == 31169 );
+    assert( strutf32(&copy) == 32 );
+    assert( strutf32(&copy) == 12399 );
+    assert( strutf32(&copy) == 32 );
+    assert( strutf32(&copy) == 12460 );
+    assert( strutf32(&copy) == 0 );
+#ifdef _WIN32
+    #pragma comment(lib,"user32.lib")
+    MessageBoxW(0, strwiden(text), L"Unicode", 0);
+#endif
     assert(~puts("Ok"));
 }
 #endif

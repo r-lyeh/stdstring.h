@@ -1,17 +1,18 @@
 /// # String library
-/// C string library (STB style, header-only). Features:
+/// C string utils library (STB style, header-only). Features:
 /// - String expression evaluator (`streval`)
 /// - String formatters (to heap buffers) (`strcpyf*`, `strcatf*`)
 /// - String formatters (to temporary buffers) (`strf*`)
 /// - String fuzzy search (`strscore`, `strfuzzy`)
 /// - String regular expression (`strregex [c?^$*]`)
 /// - String 64-bit hashing (both compile-time and runtime) (`strhash`)
-/// - String interning (quarks) (`intern`, `string`)
+/// - String interning (quarks) (`strput`, `strget`)
 /// - String matching (`strsub`, `strfindl`, `strfindr`, `strbegin`, `strend`, `strmatch`, `streq`, `streqi`)
 /// - String splitting (with and without allocations) (`strsplit`, `strchop`, `strjoin`)
 /// - String options parsing (`stropt`, `stropti`, `stroptf`)
-/// - String transform utils (`strrepl`, `strremap`, `strlower`, `strtrimlb/e`, `strtrimrb/e`)
-/// - String normalization (`strnorm`)
+/// - String trim utils (`strdel`, `strtrimws`, `strtrimblf/bff`, `strtrimrlfe/ffe`)
+/// - String transform utils (`strrepl`, `strremap`, `strlower`, `strupper`, `strrev`)
+/// - String normalization utils (`strnorm`)
 /// - String conversion utils (`strint`, `strhuman`, `strrobot`)
 /// - String unicode utils (`strutf8`, `strutf32`, `strwiden`)
 /// - [Documentation](https://rawgit.com/r-lyeh/stdstring.h/master/stdstring.h.html).
@@ -20,6 +21,7 @@
 /// - https://github.com/r-lyeh/stdstring.h
 ///
 /// # Changelog
+/// - 2018.1 (v1.0.4): Fix API() macro; Add new transform utils; Rename a few functions.
 /// - 2018.1 (v1.0.3): Add `strnorm()`, `strjoin()`. Fix `strcpyf()`.
 /// - 2018.1 (v1.0.2): Add `stropt*()` options parser.
 /// - 2018.1 (v1.0.1): Fix wrong version of strcatf() in first commit. Cosmetics.
@@ -28,6 +30,7 @@
 /// # Credits
 /// - Using Rob Pike's regular expression (apparently public domain).
 /// - Using Sam Hocevar's preprocessor trick (apparently public domain).
+/// - Using Bob Stout's transform utils (public domain).
 /// - Using Sean Barrett and Jeff Roberts' string formatters (unlicensed).
 /// - Using Werner Stoop's expression evaluator (unlicensed).
 /// - Using Dimitri Diakopoulos' unicode stuff (unlicensed).
@@ -80,8 +83,8 @@ ABI      uint64_t      STRHASH(const char *string);
 /// - Insert string into dictionary (if not exists). Returns quark ID, or 0 if empty string.
 /// - Retrieve previously interned string. ID#0 returns empty string always.
 ///<C
-ABI      int           intern(const char *string);
-ABI      const char *  string(int quark);
+ABI      int           strput(const char *string);
+ABI      const char *  strget(int quark);
 
 /// ## String matching
 /// - Extract substring from position. Negative positions are relative to end of string.
@@ -151,22 +154,33 @@ ABI      int           strchop (const char *string, const char *delimiters, int 
 ABI HEAP char**        strsplit(const char *string, const char *delimiters);
 ABI HEAP char*         strjoin (INOUT char **out, const char *tokens[], const char *separator);
 
+/// ## String trimming
+/// - Delete substring from a string.
+/// - Trim characters from begin of string to first-find (`b-str-str-e` to `x-xxx-str-e`).
+/// - Trim characters from begin of string to last-find (`b-str-str-e` to `x-xxx-xxx-e`).
+/// - Trim characters from first-find to end of string (`b-str-str-e` to `b-xxx-xxx-x`).
+/// - Trim characters from last-find to end of string (`b-str-str-e` to `b-str-xxx-x`).
+/// - Trim leading, trailing and excess embedded whitespaces.
+///<C
+ABI      char*         strdel    (char *string, const char *substring);
+ABI      char*         strtrimbff(char *string, const char *substring);
+ABI      char*         strtrimblf(char *string, const char *substring);
+ABI      char*         strtrimffe(char *string, const char *substring);
+ABI      char*         strtrimlfe(char *string, const char *substring);
+ABI      char*         strtrimws (char *string);
+
 /// ## String transforms
 /// - Replace a substring in a string.
 /// - Remap specific characters in a string from a given set to another one. Length of both sets must be identical.
-/// - Convert a string to lowercase (function is not utf8/locale aware!).
-/// - Trim characters from left search (find-first) until begin of string (`b-str-str-e` to `x-xxx-str--e`).
-/// - Trim characters from left search (find-first) until end of string (`b-str-str-e` to `b-xxx-xxx-x`).
-/// - Trim characters from right search (last-find) until begin of string (`b-str-str-e` to `x-xxx-xxx-e`).
-/// - Trim characters from right search (last-find) until end of string (`b-str-str-e` to `b-str-xxx-x`).
+/// - Convert a string to lowercase (ANSI only, not utf8/locale aware!).
+/// - Convert a string to uppercase (ANSI only, not utf8/locale aware!).
+/// - Reverse a string in-place.
 ///<C
-ABI HEAP char*         strrepl  (INOUT char **string, const char *target, const char *replace);
-ABI      char*         strremap (INOUT char *string, const char srcs[], const char dsts[]);
-ABI      char*         strlower (char *string);
-ABI      char*         strtrimlb(char *string, const char *substring);
-ABI      char*         strtrimle(char *string, const char *substring);
-ABI      char*         strtrimrb(char *string, const char *substring);
-ABI      char*         strtrimre(char *string, const char *substring);
+ABI HEAP char*         strrepl   (INOUT char **string, const char *target, const char *replace);
+ABI      char*         strremap  (INOUT char *string, const char srcs[], const char dsts[]);
+ABI      char*         strlower  (char *string);
+ABI      char*         strupper  (char *string);
+ABI      char*         strrev    (char *string);
 
 /// ## String unicode utils
 /// - Extract 32bit codepoint from string. Also advances input string to next codepoint.
@@ -198,7 +212,7 @@ ABI TEMP wchar_t*      strwiden(const char *utf8);
    #else
    #define ABI
    #endif
-   #define API(name,...)   __VA_ARS__
+   #define API(name,...)   __VA_ARGS__
    // code annonations
    #define HEAP           /* heap pointer. must free() after use */
    #define TEMP           /* temporary stack pointer. do not free() after use */
@@ -220,15 +234,15 @@ ABI TEMP wchar_t*      strwiden(const char *utf8);
    #define $
 #endif
 
-#define                STRHASH(str)                  STRHASH64(0,131ull,str,0)
-#define                STRHASH64(hsh,mul,str,idx)    STRHASH16(STRHASH16(STRHASH16(STRHASH16(hsh,mul,str,idx+48),mul,str,idx+32),mul,str,idx+16),mul,str,idx)
-#define                STRHASH16(hsh,mul,str,idx)    STRHASH04(STRHASH04(STRHASH04(STRHASH04(hsh,mul,str,idx+12),mul,str,idx+ 8),mul,str,idx+ 4),mul,str,idx)
-#define                STRHASH04(hsh,mul,str,idx)    STRHASH01(STRHASH01(STRHASH01(STRHASH01(hsh,mul,str,idx+ 3),mul,str,idx+ 2),mul,str,idx+ 1),mul,str,idx)
-#define                STRHASH01(hsh,mul,str,idx)    ((STRHASHCHR(str,idx) ^ hsh) * mul)
-#define                STRHASHCHR(str,idx)           ((unsigned)str[(idx)<STRHASHLEN(str)?STRHASHLEN(str)-1-(idx):STRHASHLEN(str)])
-#define                STRHASHLEN(str)               (sizeof(str)-1)
-
 #include __FILE__
+
+#define STRHASH(str)                  STRHASH64(0,131ull,str,0)
+#define STRHASH64(hsh,mul,str,idx)    STRHASH16(STRHASH16(STRHASH16(STRHASH16(hsh,mul,str,idx+48),mul,str,idx+32),mul,str,idx+16),mul,str,idx)
+#define STRHASH16(hsh,mul,str,idx)    STRHASH04(STRHASH04(STRHASH04(STRHASH04(hsh,mul,str,idx+12),mul,str,idx+ 8),mul,str,idx+ 4),mul,str,idx)
+#define STRHASH04(hsh,mul,str,idx)    STRHASH01(STRHASH01(STRHASH01(STRHASH01(hsh,mul,str,idx+ 3),mul,str,idx+ 2),mul,str,idx+ 1),mul,str,idx)
+#define STRHASH01(hsh,mul,str,idx)    ((STRHASHCHR(str,idx) ^ hsh) * mul)
+#define STRHASHCHR(str,idx)           ((unsigned)str[(idx)<STRHASHLEN(str)?STRHASHLEN(str)-1-(idx):STRHASHLEN(str)])
+#define STRHASHLEN(str)               (sizeof(str)-1)
 
 // IMPLEMENTATION -------------------------------------------------------------
 

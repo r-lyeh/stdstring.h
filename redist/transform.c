@@ -1,34 +1,37 @@
 // ## string transform utils
+// First four functions are based on code by Bob Stout (public domain).
 // - rlyeh, public domain.
 
+#include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
 
-char* strtrimlb(char *string, const char *substring) { $
-    char *found = strstr(string, substring);
-    if( found ) {
-        int L = strlen(substring);
-        memmove(string, found+L, strlen(string) - L);
+char *strlower(char *string) {
+    if( string ) for( char *s = string; *s; ++s ) *s = tolower(*s);
+    return string;
+}
+char *strupper(char *string) {
+    if( string ) for( char *s = string; *s; ++s ) *s = toupper(*s);
+    return string;
+} 
+char *strrev(char *string) {
+    if(string && *string)
+    for( char *p1 = string, *p2 = p1 + strlen(p1) - 1; p2 > p1; ++p1, --p2 ) {
+        *p1 ^= *p2;
+        *p2 ^= *p1;
+        *p1 ^= *p2;
     }
     return string;
 }
-char* strtrimle(char *string, const char *substring) { $
-    ((char *)strfindl(string, substring))[0] = 0;
-    return string;
-}
-char* strtrimrb(char *string, const char *substring) { $
-    const char *found = strfindr(string, substring);
-    int L = strlen(substring);
-    memmove( string, found + L, strlen(found) - L + 1);
-    return string;
-}
-char* strtrimre(char *string, const char *substring) { $
-    ((char *)strfindr(string, substring))[0] = 0;
-    return string;
-}
-char *strlower(char *string) { $
-    for( char *s = string; *s; *s++ ) {
-        if( *s >= 'A' && *s <= 'Z' ) *s = *s - 'A' + 'a'; // *s &= 32;
+char *strdel(char *string, const char *substring) {
+    if( string ) {
+        char *p = strstr(string, substring);
+        if( p ) {
+            for( int len = strlen(substring); p[len] ; ++p ) {
+                p[0] = p[len];
+            }
+            *p = 0;
+        }
     }
     return string;
 }
@@ -55,23 +58,19 @@ char *strremap( INOUT char *string, const char srcs[], const char dsts[] ) { $
     return string;
 }
 
+
 #ifdef TRANSFORMDEMO
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
 int main() {
-    {
-        char buf1[] = "hellohelloworldworld";
-        char buf2[] = "hellohelloworldworld";
-        char buf3[] = "hellohelloworldworld";
-        char buf4[] = "hellohelloworldworld";
-        strtrimlb(buf1, "ell"); puts(buf1); assert( 0 == strcmp( buf1, "ohelloworldworld") );
-        strtrimle(buf2, "ell"); puts(buf2); assert( 0 == strcmp( buf2, "h") );
-        strtrimrb(buf3, "ell"); puts(buf3); assert( 0 == strcmp( buf3, "oworldworld") );
-        strtrimre(buf4, "ell"); puts(buf4); assert( 0 == strcmp( buf4, "helloh") );
-    }
+    char buf[] = "hello cruel world";
+    assert( 0 == strcmp("hello world", strdel(buf, "cruel ")) );
+    assert( 0 == strcmp("dlrow olleh", strrev(buf)) );
+
     char remap[] = "H3110 W0r1d";
-    assert( 0 == strcmp( "Hello World", strremap(remap, "310", "elo")));
+    assert( 0 == strcmp("h3110 w0r1d", strlower(remap)));
+    assert( 0 == strcmp("hello world", strremap(remap, "310", "elo")));
     assert(~puts("Ok"));
 }
 #endif

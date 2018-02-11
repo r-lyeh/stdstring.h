@@ -7,7 +7,7 @@
 static builtin(thread) int quarklen = 0, quarkcap = 0;
 static builtin(thread) char *quarks = 0;
 
-int intern( const char *string ) { $
+int strput( const char *string ) { $
     if( !quarks ) {
         // init buffer on first time
         quarks = (char*)REALLOC( quarks, (1+1) );
@@ -33,7 +33,7 @@ int intern( const char *string ) { $
     }
     return 0;
 }
-const char *string( int key ) {
+const char *strget( int key ) {
     assert( quarks );
     return quarks + key;
 }
@@ -42,17 +42,17 @@ const char *string( int key ) {
 #include <stdio.h>
 #include <assert.h>
 int main() {
-    assert( !intern(NULL) ); // quark #0, couldnt intern null string
-    assert( !intern("") );   // quark #0, can intern empty string
-    assert( !string(0)[0] ); // empty string for quark #0
+    assert( !strput(NULL) ); // quark #0, couldnt intern null string
+    assert( !strput("") );   // quark #0, can intern empty string
+    assert( !strget(0)[0] ); // empty string for quark #0
 
-    int q1 = intern("Hello");  // -> quark #1
-    int q2 = intern("cruel");  // -> quark #2
-    int q3 = intern("world."); // -> quark #3
+    int q1 = strput("Hello");  // -> quark #1
+    int q2 = strput("cruel");  // -> quark #2
+    int q3 = strput("world."); // -> quark #3
     //printf("%d/%d\n", quarklen, quarklen+quarkcap);
 
     char buf[256];
-    sprintf(buf, "%s %s %s", string(q1), string(q2), string(q3));
+    sprintf(buf, "%s %s %s", strget(q1), strget(q2), strget(q3));
     assert( !strcmp("Hello cruel world.", buf) );
 
     assert(~puts("Ok"));

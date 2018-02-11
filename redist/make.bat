@@ -9,6 +9,7 @@ echo #define STDSTRING_IMPLEMENTATION > test.c
 echo #include "stdstring.h" >> test.c
 cl /nologo test.c -DUTFDEMO        && test
 cl /nologo test.c -DTRANSFORMDEMO  && test
+cl /nologo test.c -DTRIMDEMO       && test
 cl /nologo test.c -DCONVERSIONDEMO && test
 cl /nologo test.c -DEVALDEMO       && test
 cl /nologo test.c -DFUZZYDEMO      && test

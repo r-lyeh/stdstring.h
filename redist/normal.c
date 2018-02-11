@@ -37,16 +37,30 @@ static builtin(thread) int strnorm_buflevel = 0;
 
 TEMP char *strnorm( const char *uri ) {
 
+#   define with (strnorm_buflevel[strnorm_buf])
     strnorm_buflevel = (strnorm_buflevel+1) % 16;
-#define with (strnorm_buf[strnorm_buflevel])
 
-    // 1. @todo: unescape url here
-    // 2. @todo: convert diacritics into latin characters here (romanization)
+    // 0. @todo: unescape url here
+    // 1. @todo: convert diacritics into latin characters here (romanization)
+    // 2. camelCase to lisp-case
+
+    int i = 0;
+    char lbuf[511+1] = { 0 };
+    for( char *p = lbuf; *uri && i < 511; ++uri ) {
+        if( islower(*uri) ) {
+            p[i++] = *uri;
+        } else {
+            p[i++] = '-';
+            p[i++] = tolower(*uri);
+        }
+    }
+    char *lisp = ( lbuf[i] = 0, &lbuf[ lbuf[0] == '-' ] );
+
     // 3. lowercase
-    TEMP char *buf = strlower( strcpyf(&with, "%s", uri) );
+    TEMP char *buf = strlower( strcpyf(&with, "%s", lisp) );
 
     // 4. remove url options at eos (if any)
-    strtrimle( buf, "?" );
+    strtrimffe( buf, "?" );
 
     // 5. split path "\\/" up to 2nd level only
     HEAP char **tokens = strsplit( buf, "\\/" );
@@ -55,10 +69,10 @@ TEMP char *strnorm( const char *uri ) {
     char *path = n >= 2 ? tokens[ n - 2 ] : "";
 
     // 6. strip all #tags and trim extensions
-    strtrimle(file, ".");
-    strtrimle(file, "#");
-    strtrimle(path, ".");
-    strtrimle(path, "#");
+    strtrimffe(file, ".");
+    strtrimffe(file, "#");
+    strtrimffe(path, ".");
+    strtrimffe(path, "#");
     strcpyf( &with, "%s_%s", path, file );
     FREE( tokens );
 
@@ -82,6 +96,7 @@ TEMP char *strnorm( const char *uri ) {
     FREE(words);
 
     return &with[0];
+#   undef with
 }
 
 
@@ -110,6 +125,13 @@ int main() {
         test( "folder/main_logo" );
         test( "folder/Main logo" );
         test( "folder / Main  logo " );
+    }
+    if( "test camelCase" ) {
+        should_be = "folder_logo_main";
+        test( "folderMainLogo" );
+        test( "FolderMainLogo" );
+        test( "folder/MainLogo" );
+        test( "folder/MainLogo" );
     }
     if( "test folder/asset separators" ) {
         should_be = "folder_logo_main";

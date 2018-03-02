@@ -1,6 +1,13 @@
 // # string options parsing ###################################################
 // - rlyeh, public domain
 
+extern int __argc;
+extern char **__argv;
+
+// MINGW: _argc, _argv
+// HP-UX:  __argc_value, __argv_value 
+// libc:  __libc_argc, __libc_argv
+
 const char *stropt( const char *defaults, const char *options_csv ) { $
     const char *tokens[128];
     if( strchop( options_csv, ",", 128, tokens ) ) {

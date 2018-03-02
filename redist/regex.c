@@ -2,7 +2,9 @@
 // [ref] https://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
 // @todo: evaluate @kokke/tiny-regex-c instead.
 
-static int reghere(const char *string, const char *re) {
+int regstar(const char *string, const char *re, int c);
+
+int reghere(const char *string, const char *re) {
     if( re[0] == '\0' ) return 1;
     if( re[1] == '*' ) return regstar(string, re+2, re[0]);
     if( re[0] == '$' && re[1] == '\0' ) return *string == '\0';
@@ -10,7 +12,7 @@ static int reghere(const char *string, const char *re) {
     return 0;
 }
 
-static int regstar(const char *string, const char *re, int c) {
+int regstar(const char *string, const char *re, int c) {
     do { /* a * matches zero or more instances */
         if( reghere(string, re) ) return 1;
     } while( *string != '\0' && (*string++ == c || c == '?') );

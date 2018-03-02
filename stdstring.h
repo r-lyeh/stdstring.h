@@ -14,7 +14,7 @@
 /// - String transform utils (`strrepl`, `strremap`, `strlower`, `strupper`, `strrev`)
 /// - String normalization utils (`strnorm`)
 /// - String conversion utils (`strint`, `strhuman`, `strrobot`)
-/// - String unicode utils (`strutf8`, `strutf32`, `strwiden`)
+/// - String unicode utils (`strutf8`, `strutf32`, `strwiden`, `strshorten`)
 /// - [Documentation](https://rawgit.com/r-lyeh/stdstring.h/master/stdstring.h.html).
 /// 
 /// # Homepage
@@ -33,7 +33,7 @@
 /// - Using Bob Stout's transform utils (public domain).
 /// - Using Sean Barrett and Jeff Roberts' string formatters (unlicensed).
 /// - Using Werner Stoop's expression evaluator (unlicensed).
-/// - Using Dimitri Diakopoulos' unicode stuff (unlicensed).
+/// - Using Dimitri Diakopoulos' & Sean Barrett's unicode stuff (unlicensed).
 ///
 /// # License
 /// - rlyeh, unlicensed (~public domain).
@@ -185,11 +185,13 @@ ABI      char*         strrev    (char *string);
 /// ## String unicode utils
 /// - Extract 32bit codepoint from string. Also advances input string to next codepoint.
 /// - Convert 32bit codepoint to utf8 string.
-/// - Convert utf8 to utf16 string (Windows only).
+/// - Convert utf8 to utf16 string.
+/// - Convert utf16 to utf8 string.
 ///<C
 ABI      uint32_t      strutf32(INOUT const char **utf8);
 ABI TEMP char *        strutf8(uint32_t codepoint);
 ABI TEMP wchar_t*      strwiden(const char *utf8);
+ABI TEMP char*         strshorten(const wchar_t *utf16);
 ///>
 
 );
@@ -204,6 +206,7 @@ ABI TEMP wchar_t*      strwiden(const char *utf8);
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <wchar.h>
 
 #ifndef AVA
    // symbol visiblity, abi and linkage
@@ -2610,7 +2613,9 @@ int main(int argc, char *argv[]) {
 // [ref] https://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
 // @todo: evaluate @kokke/tiny-regex-c instead.
 
-static int reghere(const char *string, const char *re) {
+int regstar(const char *string, const char *re, int c);
+
+int reghere(const char *string, const char *re) {
     if( re[0] == '\0' ) return 1;
     if( re[1] == '*' ) return regstar(string, re+2, re[0]);
     if( re[0] == '$' && re[1] == '\0' ) return *string == '\0';
@@ -2618,7 +2623,7 @@ static int reghere(const char *string, const char *re) {
     return 0;
 }
 
-static int regstar(const char *string, const char *re, int c) {
+int regstar(const char *string, const char *re, int c) {
     do { /* a * matches zero or more instances */
         if( reghere(string, re) ) return 1;
     } while( *string != '\0' && (*string++ == c || c == '?') );
@@ -3098,6 +3103,13 @@ int main() {
 // # string options parsing ###################################################
 // - rlyeh, public domain
 
+extern int __argc;
+extern char **__argv;
+
+// MINGW: _argc, _argv
+// HP-UX:  __argc_value, __argv_value 
+// libc:  __libc_argc, __libc_argv
+
 const char *stropt( const char *defaults, const char *options_csv ) { $
     const char *tokens[128];
     if( strchop( options_csv, ",", 128, tokens ) ) {
@@ -3513,6 +3525,7 @@ int main( int argc, char **argv ) {
 
 // ## utf8 and unicode
 // Based on code by @ddiakopoulos (unlicensed).
+// Based on code by @nothings (public domain).
 // - rlyeh, public domain.
 
 uint32_t strutf32(INOUT const char **p) { $
@@ -3560,19 +3573,108 @@ TEMP char *strutf8(uint32_t cp) { $
     return utf[n] = '\0', (char *)utf;
 }
 
-#ifdef _WIN32
-#include <shlobj.h>
-TEMP wchar_t *strwiden(const char *utf8) { $ // wide strings (windows only)
-    static builtin(thread) char *buf = 0;
-    int needed = 2 * MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
-    buf = REALLOC( buf, needed + 1 ); buf[needed] = 0;
-    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, (void*)buf, needed);
-    return (wchar_t *)buf;
+wchar_t *strwiden_(wchar_t *buffer, const char *ostr, int n) { $
+   const uint8_t *str = (const uint8_t *) ostr;
+   uint32_t c;
+   int i=0;
+   --n;
+   while (*str) {
+      if (i >= n)
+         return NULL;
+      if (!(*str & 0x80))
+         buffer[i++] = *str++;
+      else if ((*str & 0xe0) == 0xc0) {
+         if (*str < 0xc2) return NULL;
+         c = (*str++ & 0x1f) << 6;
+         if ((*str & 0xc0) != 0x80) return NULL;
+         buffer[i++] = c + (*str++ & 0x3f);
+      } else if ((*str & 0xf0) == 0xe0) {
+         if (*str == 0xe0 && (str[1] < 0xa0 || str[1] > 0xbf)) return NULL;
+         if (*str == 0xed && str[1] > 0x9f) return NULL; // str[1] < 0x80 is checked below
+         c = (*str++ & 0x0f) << 12;
+         if ((*str & 0xc0) != 0x80) return NULL;
+         c += (*str++ & 0x3f) << 6;
+         if ((*str & 0xc0) != 0x80) return NULL;
+         buffer[i++] = c + (*str++ & 0x3f);
+      } else if ((*str & 0xf8) == 0xf0) {
+         if (*str > 0xf4) return NULL;
+         if (*str == 0xf0 && (str[1] < 0x90 || str[1] > 0xbf)) return NULL;
+         if (*str == 0xf4 && str[1] > 0x8f) return NULL; // str[1] < 0x80 is checked below
+         c = (*str++ & 0x07) << 18;
+         if ((*str & 0xc0) != 0x80) return NULL;
+         c += (*str++ & 0x3f) << 12;
+         if ((*str & 0xc0) != 0x80) return NULL;
+         c += (*str++ & 0x3f) << 6;
+         if ((*str & 0xc0) != 0x80) return NULL;
+         c += (*str++ & 0x3f);
+         // utf-8 encodings of values used in surrogate pairs are invalid
+         if ((c & 0xFFFFF800) == 0xD800) return NULL;
+         if (c >= 0x10000) {
+            c -= 0x10000;
+            if (i + 2 > n) return NULL;
+            buffer[i++] = 0xD800 | (0x3ff & (c >> 10));
+            buffer[i++] = 0xDC00 | (0x3ff & (c      ));
+         }
+      } else
+         return NULL;
+   }
+   buffer[i] = 0;
+   return buffer;
 }
-#endif
+
+char *strshorten_(char *buffer, const wchar_t *str, int n) { $
+   int i=0;
+   --n;
+   while (*str) {
+      if (*str < 0x80) {
+         if (i+1 > n) return NULL;
+         buffer[i++] = (char) *str++;
+      } else if (*str < 0x800) {
+         if (i+2 > n) return NULL;
+         buffer[i++] = 0xc0 + (*str >> 6);
+         buffer[i++] = 0x80 + (*str & 0x3f);
+         str += 1;
+      } else if (*str >= 0xd800 && *str < 0xdc00) {
+         uint32_t c;
+         if (i+4 > n) return NULL;
+         c = ((str[0] - 0xd800) << 10) + ((str[1]) - 0xdc00) + 0x10000;
+         buffer[i++] = 0xf0 + (c >> 18);
+         buffer[i++] = 0x80 + ((c >> 12) & 0x3f);
+         buffer[i++] = 0x80 + ((c >>  6) & 0x3f);
+         buffer[i++] = 0x80 + ((c      ) & 0x3f);
+         str += 2;
+      } else if (*str >= 0xdc00 && *str < 0xe000) {
+         return NULL;
+      } else {
+         if (i+3 > n) return NULL;
+         buffer[i++] = 0xe0 + (*str >> 12);
+         buffer[i++] = 0x80 + ((*str >> 6) & 0x3f);
+         buffer[i++] = 0x80 + ((*str     ) & 0x3f);
+         str += 1;
+      }
+   }
+   buffer[i] = 0;
+   return buffer;
+}
+
+TEMP wchar_t *strwiden(const char *str) {
+   int len = strlen(str) * 6;
+   wchar_t *buffer = (wchar_t*)MALLOC( len );
+   return strwiden_(buffer, str, len);
+}
+
+TEMP char *strshorten(const wchar_t *str) {
+   int len = wcslen(str) * 6;
+   char *buffer = (char*)MALLOC( len );
+   return strshorten_(buffer, str, len);
+}
 
 #ifdef UTFDEMO
 #include <assert.h>
+#ifdef _WIN32
+#include <windows.h>
+#pragma comment(lib,"user32.lib")
+#endif
 int main() {
     const char *text = "私 は ガ";
     const char *copy = text;
@@ -3583,7 +3685,6 @@ int main() {
     assert( strutf32(&copy) == 12460 );
     assert( strutf32(&copy) == 0 );
 #ifdef _WIN32
-    #pragma comment(lib,"user32.lib")
     MessageBoxW(0, strwiden(text), L"Unicode", 0);
 #endif
     assert(~puts("Ok"));

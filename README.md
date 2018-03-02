@@ -14,18 +14,11 @@ C string utils library (STB style, header-only). Features:
 - String transform utils (`strrepl`, `strremap`, `strlower`, `strupper`, `strrev`)
 - String normalization utils (`strnorm`)
 - String conversion utils (`strint`, `strhuman`, `strrobot`)
-- String unicode utils (`strutf8`, `strutf32`, `strwiden`)
+- String unicode utils (`strutf8`, `strutf32`, `strwiden`, `strshorten`)
 - [Documentation](https://rawgit.com/r-lyeh/stdstring.h/master/stdstring.h.html).
 
 # Homepage
 - https://github.com/r-lyeh/stdstring.h
-
-# Changelog
-- 2018.1 (v1.0.4): Fix API() macro; Add new transform utils; Rename a few functions.
-- 2018.1 (v1.0.3): Add `strnorm()`, `strjoin()`. Fix `strcpyf()`.
-- 2018.1 (v1.0.2): Add `stropt*()` options parser.
-- 2018.1 (v1.0.1): Fix wrong version of strcatf() in first commit. Cosmetics.
-- 2018.1 (v1.0.0): Initial release.
 
 # Credits
 - Using Rob Pike's regular expression (apparently public domain).
@@ -33,7 +26,7 @@ C string utils library (STB style, header-only). Features:
 - Using Bob Stout's transform utils (public domain).
 - Using Sean Barrett and Jeff Roberts' string formatters (unlicensed).
 - Using Werner Stoop's expression evaluator (unlicensed).
-- Using Dimitri Diakopoulos' unicode stuff (unlicensed).
+- Using Dimitri Diakopoulos' & Sean Barrett's unicode stuff (unlicensed).
 
 # License
 - rlyeh, unlicensed (~public domain).

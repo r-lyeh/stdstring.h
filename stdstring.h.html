@@ -17,7 +17,7 @@ C string utils library (STB style, header-only). Features:
 - String transform utils (`strrepl`, `strremap`, `strlower`, `strupper`, `strrev`)
 - String normalization utils (`strnorm`)
 - String conversion utils (`strint`, `strhuman`, `strrobot`)
-- String unicode utils (`strutf8`, `strutf32`, `strwiden`)
+- String unicode utils (`strutf8`, `strutf32`, `strwiden`, `strshorten`)
 - [Documentation](https://rawgit.com/r-lyeh/stdstring.h/master/stdstring.h.html).
 
 # Homepage
@@ -36,7 +36,7 @@ C string utils library (STB style, header-only). Features:
 - Using Bob Stout's transform utils (public domain).
 - Using Sean Barrett and Jeff Roberts' string formatters (unlicensed).
 - Using Werner Stoop's expression evaluator (unlicensed).
-- Using Dimitri Diakopoulos' unicode stuff (unlicensed).
+- Using Dimitri Diakopoulos' & Sean Barrett's unicode stuff (unlicensed).
 
 # License
 - rlyeh, unlicensed (~public domain).
@@ -223,12 +223,14 @@ ABI      char*         strrev    (char *string);
 ## String unicode utils
 - Extract 32bit codepoint from string. Also advances input string to next codepoint.
 - Convert 32bit codepoint to utf8 string.
-- Convert utf8 to utf16 string (Windows only).
+- Convert utf8 to utf16 string.
+- Convert utf16 to utf8 string.
 <script type='preformatted'>
 ~~~C
 ABI      uint32_t      strutf32(INOUT const char **utf8);
 ABI TEMP char *        strutf8(uint32_t codepoint);
 ABI TEMP wchar_t*      strwiden(const char *utf8);
+ABI TEMP char*         strshorten(const wchar_t *utf16);
 ~~~
 </script>
 <script>markdeepOptions={tocStyle:'long'};</script>

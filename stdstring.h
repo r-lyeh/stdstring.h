@@ -3103,12 +3103,18 @@ int main() {
 // # string options parsing ###################################################
 // - rlyeh, public domain
 
-extern int __argc;
-extern char **__argv;
-
-// MINGW: _argc, _argv
-// HP-UX:  __argc_value, __argv_value 
-// libc:  __libc_argc, __libc_argv
+#ifdef __GNUC__ // also, clang
+    int __argc;
+    char **__argv;
+    __attribute__((constructor)) void init_argcv(int argc, char **argv) {
+        __argc = argc;
+        __argv = argv;
+    }
+#else
+    // MINGW: _argc, _argv
+    // HP-UX:  __argc_value, __argv_value 
+    // libc:  __libc_argc, __libc_argv
+#endif
 
 const char *stropt( const char *defaults, const char *options_csv ) { $
     const char *tokens[128];
